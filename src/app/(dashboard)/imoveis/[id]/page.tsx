@@ -1,0 +1,89 @@
+import { notFound } from "next/navigation";
+import { getPropertyById } from "@/actions/properties";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { PROPERTY_PURPOSE_LABELS, PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS } from "@/lib/labels";
+import { formatCurrency } from "@/lib/utils";
+import { Bed, Bath, Car, Maximize, Share2, Pencil } from "lucide-react";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const property = await getPropertyById(id);
+  return { title: property ? property.title : "Imóvel" };
+}
+
+export default async function PropertyDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const property = await getPropertyById(id);
+  if (!property) notFound();
+
+  const address = [
+    property.street,
+    property.number,
+    property.neighborhood,
+    `${property.city}/${property.state}`,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm text-muted-foreground">{property.code}</p>
+          <h1 className="text-2xl font-bold">{property.title}</h1>
+          <p className="text-2xl font-bold text-primary">{formatCurrency(Number(property.price))}</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm">
+            <Pencil className="mr-2 h-4 w-4" />
+            Editar
+          </Button>
+          <Button size="sm">
+            <Share2 className="mr-2 h-4 w-4" />
+            Compartilhar
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid h-64 place-items-center rounded-xl bg-muted">
+        <p className="text-muted-foreground">Galeria de fotos ({property.media.length} mídias)</p>
+      </div>
+
+      <div className="flex flex-wrap gap-4">
+        <Badge variant="secondary">{PROPERTY_TYPE_LABELS[property.type]}</Badge>
+        <Badge variant="secondary">{PROPERTY_PURPOSE_LABELS[property.purpose]}</Badge>
+        <Badge>{PROPERTY_STATUS_LABELS[property.status]}</Badge>
+      </div>
+
+      <div className="flex flex-wrap gap-6 text-sm">
+        <span className="flex items-center gap-2"><Bed className="h-4 w-4" /> {property.bedrooms} quartos</span>
+        <span className="flex items-center gap-2"><Bath className="h-4 w-4" /> {property.bathrooms} banheiros</span>
+        <span className="flex items-center gap-2"><Car className="h-4 w-4" /> {property.garages} vagas</span>
+        <span className="flex items-center gap-2">
+          <Maximize className="h-4 w-4" />{" "}
+          {property.builtArea ? Number(property.builtArea) : property.totalArea ? Number(property.totalArea) : "—"} m²
+        </span>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle>Descrição</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">{property.description ?? "Sem descrição"}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Endereço e valores</CardTitle></CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p><span className="text-muted-foreground">Endereço:</span> {address}</p>
+            <p><span className="text-muted-foreground">Condomínio:</span> {property.condoFee ? formatCurrency(Number(property.condoFee)) : "—"}</p>
+            <p><span className="text-muted-foreground">IPTU:</span> {property.iptu ? formatCurrency(Number(property.iptu)) : "—"}</p>
+            <p><span className="text-muted-foreground">Corretor:</span> {property.broker?.name ?? "—"}</p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

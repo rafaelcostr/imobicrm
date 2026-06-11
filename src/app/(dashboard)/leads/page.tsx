@@ -1,0 +1,87 @@
+import Link from "next/link";
+import { getLeads } from "@/actions/leads";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { LEAD_SOURCE_LABELS, LEAD_STAGE_LABELS, LEAD_TEMPERATURE_LABELS } from "@/lib/labels";
+import { Plus, Search } from "lucide-react";
+import { formatDate } from "@/lib/utils";
+
+export const metadata = { title: "Leads" };
+
+export default async function LeadsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+  const leads = await getLeads({ search: q });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Gestão de Leads</h1>
+          <p className="text-muted-foreground">Cadastre, filtre e acompanhe todos os seus leads</p>
+        </div>
+        <Button asChild>
+          <Link href="/leads/novo">
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Lead
+          </Link>
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <form className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input name="q" defaultValue={q} placeholder="Buscar por nome, e-mail ou telefone..." className="pl-10" />
+            </div>
+            <Button type="submit" variant="secondary">
+              Buscar
+            </Button>
+          </form>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-muted-foreground">
+                <th className="pb-3 pr-4 font-medium">Nome</th>
+                <th className="pb-3 pr-4 font-medium">Origem</th>
+                <th className="pb-3 pr-4 font-medium">Etapa</th>
+                <th className="pb-3 pr-4 font-medium">Último contato</th>
+                <th className="pb-3 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leads.map((lead) => (
+                <tr key={lead.id} className="border-b border-border/50 hover:bg-muted/50">
+                  <td className="py-3 pr-4">
+                    <Link href={`/leads/${lead.id}`} className="font-medium hover:text-primary">
+                      {lead.name}
+                    </Link>
+                    <p className="text-xs text-muted-foreground">{lead.phone}</p>
+                  </td>
+                  <td className="py-3 pr-4">{LEAD_SOURCE_LABELS[lead.source]}</td>
+                  <td className="py-3 pr-4">{LEAD_STAGE_LABELS[lead.stage]}</td>
+                  <td className="py-3 pr-4">{lead.lastContactAt ? formatDate(lead.lastContactAt) : "—"}</td>
+                  <td className="py-3">
+                    <Badge variant={lead.temperature === "QUENTE" ? "hot" : lead.temperature === "FRIO" ? "cold" : "warning"}>
+                      {LEAD_TEMPERATURE_LABELS[lead.temperature]}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {leads.length === 0 && (
+            <p className="py-8 text-center text-muted-foreground">Nenhum lead encontrado</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: imobicrm-postgres
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: imobicrm
+      POSTGRES_PASSWORD: imobicrm123
+      POSTGRES_DB: imobicrm
+    volumes:
+      - imobicrm_pgdata:/var/lib/postgresql/data
+
+volumes:
+  imobicrm_pgdata:

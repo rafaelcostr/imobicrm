@@ -1,0 +1,408 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  GESTOR
+  CORRETOR
+}
+
+enum LeadSource {
+  INSTAGRAM
+  FACEBOOK
+  GOOGLE
+  SITE
+  INDICACAO
+  OLX
+  ZAP_IMOVEIS
+  VIVA_REAL
+}
+
+enum LeadStage {
+  NOVO_LEAD
+  PRIMEIRO_CONTATO
+  QUALIFICADO
+  VISITA_AGENDADA
+  PROPOSTA
+  NEGOCIACAO
+  VENDA_CONCLUIDA
+  PERDIDO
+}
+
+enum LeadTemperature {
+  QUENTE
+  MORNO
+  FRIO
+}
+
+enum PropertyType {
+  APARTAMENTO
+  CASA
+  TERRENO
+  COMERCIAL
+  COBERTURA
+  STUDIO
+}
+
+enum PropertyPurpose {
+  VENDA
+  ALUGUEL
+  VENDA_ALUGUEL
+}
+
+enum PropertyStatus {
+  DISPONIVEL
+  RESERVADO
+  VENDIDO
+  ALUGADO
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  PDF
+}
+
+enum CommissionStatus {
+  PENDENTE
+  EM_PROCESSAMENTO
+  PAGO
+}
+
+enum TaskType {
+  VISITA
+  LIGACAO
+  REUNIAO
+  RETORNO
+}
+
+enum NotificationType {
+  TASK
+  LEAD
+  SALE
+  COMMISSION
+  SYSTEM
+}
+
+enum ReportType {
+  LEADS
+  VENDAS
+  CORRETORES
+  IMOVEIS
+  COMISSOES
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+  leads     Lead[]
+}
+
+model User {
+  id             String         @id @default(cuid())
+  name           String
+  email          String         @unique
+  passwordHash   String
+  role           Role           @default(CORRETOR)
+  phone          String?
+  creci          String?
+  avatarUrl      String?
+  monthlyGoal    Decimal?       @db.Decimal(12, 2)
+  isActive       Boolean        @default(true)
+  teamId         String?
+  team           Team?          @relation(fields: [teamId], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  leads          Lead[]         @relation("LeadBroker")
+  properties     Property[]
+  visits         Visit[]
+  proposals      Proposal[]
+  sales          Sale[]
+  commissions    Commission[]
+  tasks          Task[]
+  notifications  Notification[]
+  leadHistories  LeadHistory[]
+  leadNotes      LeadNote[]
+  reports        Report[]
+  resetTokens    PasswordResetToken[]
+  whatsappMsgs   WhatsAppMessage[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Lead {
+  id            String          @id @default(cuid())
+  name          String
+  phone         String
+  whatsapp      String?
+  email         String?
+  city          String?
+  state         String?
+  interest      String?
+  priceRange    String?
+  notes         String?
+  source        LeadSource      @default(SITE)
+  stage         LeadStage       @default(NOVO_LEAD)
+  temperature   LeadTemperature @default(MORNO)
+  brokerId      String?
+  broker        User?           @relation("LeadBroker", fields: [brokerId], references: [id])
+  teamId        String?
+  team          Team?           @relation(fields: [teamId], references: [id])
+  propertyId    String?
+  property      Property?       @relation(fields: [propertyId], references: [id])
+  lastContactAt DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  histories     LeadHistory[]
+  leadNotes     LeadNote[]
+  attachments   LeadAttachment[]
+  visits        Visit[]
+  proposals     Proposal[]
+  tasks         Task[]
+  whatsappMsgs  WhatsAppMessage[]
+
+  @@index([brokerId])
+  @@index([stage])
+  @@index([source])
+}
+
+model LeadHistory {
+  id          String    @id @default(cuid())
+  leadId      String
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  action      String
+  fromStage   LeadStage?
+  toStage     LeadStage?
+  description String?
+  createdAt   DateTime  @default(now())
+
+  @@index([leadId])
+}
+
+model LeadNote {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+}
+
+model LeadAttachment {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fileName  String
+  fileUrl   String
+  mimeType  String?
+  size      Int?
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+}
+
+model Property {
+  id              String         @id @default(cuid())
+  code            String         @unique
+  title           String
+  description     String?
+  type            PropertyType
+  purpose         PropertyPurpose
+  price           Decimal        @db.Decimal(14, 2)
+  condoFee        Decimal?       @db.Decimal(10, 2)
+  iptu            Decimal?       @db.Decimal(10, 2)
+  bedrooms        Int            @default(0)
+  bathrooms       Int            @default(0)
+  suites          Int            @default(0)
+  garages         Int            @default(0)
+  totalArea       Decimal?       @db.Decimal(10, 2)
+  builtArea       Decimal?       @db.Decimal(10, 2)
+  street          String?
+  number          String?
+  complement      String?
+  neighborhood    String?
+  city            String
+  state           String
+  zipCode         String?
+  status          PropertyStatus @default(DISPONIVEL)
+  brokerId        String?
+  broker          User?          @relation(fields: [brokerId], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  media           PropertyMedia[]
+  leads           Lead[]
+  visits          Visit[]
+  proposals       Proposal[]
+  sales           Sale[]
+
+  @@index([status])
+  @@index([brokerId])
+}
+
+model PropertyMedia {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  type       MediaType
+  url        String
+  fileName   String?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([propertyId])
+}
+
+model Visit {
+  id          String   @id @default(cuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id])
+  brokerId    String
+  broker      User     @relation(fields: [brokerId], references: [id])
+  scheduledAt DateTime
+  completed   Boolean  @default(false)
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([brokerId])
+  @@index([scheduledAt])
+}
+
+model Proposal {
+  id         String   @id @default(cuid())
+  leadId     String
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id])
+  brokerId   String
+  broker     User     @relation(fields: [brokerId], references: [id])
+  amount     Decimal  @db.Decimal(14, 2)
+  sentAt     DateTime @default(now())
+  accepted   Boolean?
+  notes      String?
+
+  @@index([brokerId])
+}
+
+model Sale {
+  id          String       @id @default(cuid())
+  propertyId  String
+  property    Property     @relation(fields: [propertyId], references: [id])
+  brokerId    String
+  broker      User         @relation(fields: [brokerId], references: [id])
+  amount      Decimal      @db.Decimal(14, 2)
+  closedAt    DateTime     @default(now())
+  commission  Commission?
+
+  @@index([brokerId])
+  @@index([closedAt])
+}
+
+model Commission {
+  id         String           @id @default(cuid())
+  saleId     String           @unique
+  sale       Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  brokerId   String
+  broker     User             @relation(fields: [brokerId], references: [id])
+  propertyValue Decimal       @db.Decimal(14, 2)
+  percentage Decimal          @db.Decimal(5, 2)
+  amount     Decimal          @db.Decimal(14, 2)
+  status     CommissionStatus @default(PENDENTE)
+  paidAt     DateTime?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([brokerId])
+  @@index([status])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  type        TaskType
+  startAt     DateTime
+  endAt       DateTime?
+  completed   Boolean   @default(false)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  leadId      String?
+  lead        Lead?     @relation(fields: [leadId], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([startAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  read      Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+}
+
+model Report {
+  id        String     @id @default(cuid())
+  type      ReportType
+  title     String
+  filters   Json?
+  data      Json?
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  createdAt DateTime   @default(now())
+
+  @@index([userId])
+}
+
+model WhatsAppMessage {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  direction String
+  content   String
+  sentAt    DateTime @default(now())
+
+  @@index([leadId])
+}
+
+model WhatsAppTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  content   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
