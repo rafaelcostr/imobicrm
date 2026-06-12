@@ -1,6 +1,24 @@
 # ImobiCRM
 
-CRM imobiliário SaaS completo para corretores e imobiliárias.
+Plataforma de gestão comercial para o mercado imobiliário. Centraliza leads, funil de vendas, carteira de imóveis, agenda, comissões e relatórios em um único painel — pensada para corretores autônomos, equipes e imobiliárias.
+
+## Sobre o projeto
+
+O **ImobiCRM** é um CRM imobiliário em formato SaaS que organiza todo o fluxo comercial: da captação do lead até o fechamento da venda. O gestor acompanha a equipe e os indicadores; o corretor trabalha leads, visitas e propostas no dia a dia; o administrador controla usuários, permissões e configurações.
+
+**Principais recursos:**
+
+- Dashboard com KPIs e gráficos de desempenho
+- Gestão de leads com origem, temperatura e histórico
+- Funil Kanban com arrastar e soltar entre etapas
+- Cadastro e publicação de imóveis
+- Área do corretor com metas e carteira
+- Controle de comissões por venda
+- Agenda de visitas e tarefas
+- Módulo WhatsApp (integração simulada, pronto para API)
+- Relatórios exportáveis
+- Página pública de captação de leads (`/captura`)
+- Autenticação com perfis (Administrador, Gestor, Corretor) e recuperação de senha
 
 ## Stack
 

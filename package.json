@@ -1,6 +1,7 @@
 {
   "name": "imobicrm",
   "version": "0.1.0",
+  "description": "CRM imobiliário SaaS — leads, funil Kanban, imóveis, comissões, agenda e relatórios para corretores e imobiliárias.",
   "private": true,
   "scripts": {
     "dev": "next dev",
