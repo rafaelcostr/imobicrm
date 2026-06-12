@@ -9,6 +9,8 @@ import { sanitizeString } from "@/lib/utils";
 import { leadSchema, leadUpdateSchema, publicLeadSchema } from "@/lib/validations/schemas";
 import { assertRateLimit } from "@/lib/server-rate-limit";
 import { buildPaginatedResult, parsePagination } from "@/lib/pagination";
+import { assignBrokerRoundRobin } from "@/lib/lead-assignment";
+import { LGPD_CONSENT_VERSION } from "@/lib/lgpd";
 import type { z } from "zod";
 
 function buildLeadWhere(
@@ -109,6 +111,11 @@ export async function createLead(data: z.infer<typeof leadSchema>) {
 
   const parsed = leadSchema.parse(data);
 
+  let brokerId = user.role === "CORRETOR" ? user.id : parsed.brokerId;
+  if (!brokerId && user.role !== "CORRETOR") {
+    brokerId = (await assignBrokerRoundRobin()) ?? user.id;
+  }
+
   const lead = await prisma.lead.create({
     data: {
       name: sanitizeString(parsed.name, 120),
@@ -122,7 +129,7 @@ export async function createLead(data: z.infer<typeof leadSchema>) {
       notes: parsed.notes ? sanitizeString(parsed.notes, 2000) : null,
       source: parsed.source,
       temperature: parsed.temperature ?? "MORNO",
-      brokerId: user.role === "CORRETOR" ? user.id : parsed.brokerId ?? user.id,
+      brokerId: brokerId ?? user.id,
     },
   });
 
@@ -131,7 +138,9 @@ export async function createLead(data: z.infer<typeof leadSchema>) {
       leadId: lead.id,
       userId: user.id,
       action: "LEAD_CRIADO",
-      description: "Lead cadastrado no sistema",
+      description: brokerId && !parsed.brokerId && user.role !== "CORRETOR"
+        ? "Lead cadastrado e distribuído por roleta"
+        : "Lead cadastrado no sistema",
     },
   });
 
@@ -268,6 +277,47 @@ export async function getFunnelLeads() {
   });
 }
 
+export async function assignLeadBroker(leadId: string, brokerId: string) {
+  const user = await requireAuth();
+  requirePermission(user.role as Role, "leads:assign");
+
+  const lead = await getLeadById(leadId);
+  if (!lead) throw new Error("Lead não encontrado");
+
+  const broker = await prisma.user.findFirst({
+    where: { id: brokerId, role: "CORRETOR", isActive: true },
+  });
+  if (!broker) throw new Error("Corretor inválido");
+
+  await prisma.$transaction([
+    prisma.lead.update({
+      where: { id: leadId },
+      data: { brokerId, lastContactAt: new Date() },
+    }),
+    prisma.leadHistory.create({
+      data: {
+        leadId,
+        userId: user.id,
+        action: "CORRETOR_ATRIBUIDO",
+        description: `Lead atribuído a ${broker.name}`,
+      },
+    }),
+    prisma.notification.create({
+      data: {
+        userId: broker.id,
+        type: "LEAD",
+        title: "Novo lead atribuído",
+        message: `${lead.name} foi atribuído a você`,
+        link: `/leads/${leadId}`,
+      },
+    }),
+  ]);
+
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/leads");
+  revalidatePath("/funil");
+}
+
 export async function capturePublicLead(data: {
   name: string;
   phone: string;
@@ -283,11 +333,8 @@ export async function capturePublicLead(data: {
   await assertRateLimit("captura", 5, 60_000);
 
   const parsed = publicLeadSchema.parse(data);
-
-  const defaultBroker = await prisma.user.findFirst({
-    where: { role: "CORRETOR", isActive: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const brokerId = await assignBrokerRoundRobin();
+  const consentAt = new Date();
 
   const lead = await prisma.lead.create({
     data: {
@@ -296,7 +343,9 @@ export async function capturePublicLead(data: {
       email: parsed.email ? parsed.email.toLowerCase() : null,
       interest: parsed.interest ? sanitizeString(parsed.interest, 200) : null,
       source: "SITE",
-      brokerId: defaultBroker?.id,
+      brokerId,
+      lgpdConsentAt: consentAt,
+      lgpdConsentVersion: LGPD_CONSENT_VERSION,
     },
   });
 
@@ -304,14 +353,16 @@ export async function capturePublicLead(data: {
     data: {
       leadId: lead.id,
       action: "CAPTACAO_PUBLICA",
-      description: "Lead captado pela página pública",
+      description: brokerId
+        ? `Lead captado pela página pública — roleta → corretor atribuído (LGPD v${LGPD_CONSENT_VERSION})`
+        : `Lead captado pela página pública (LGPD v${LGPD_CONSENT_VERSION})`,
     },
   });
 
-  if (defaultBroker) {
+  if (brokerId) {
     await prisma.notification.create({
       data: {
-        userId: defaultBroker.id,
+        userId: brokerId,
         type: "LEAD",
         title: "Novo lead captado",
         message: `${lead.name} entrou pelo formulário público`,

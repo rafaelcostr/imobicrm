@@ -170,6 +170,8 @@ model Lead {
   propertyId    String?
   property      Property?       @relation(fields: [propertyId], references: [id])
   lastContactAt DateTime?
+  lgpdConsentAt DateTime?
+  lgpdConsentVersion String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   histories     LeadHistory[]

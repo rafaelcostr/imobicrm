@@ -1,10 +1,15 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLeadById } from "@/actions/leads";
 import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { getActiveBrokers } from "@/lib/lead-assignment";
+import { getPropertyMatchesForLead } from "@/features/leads/matching";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LeadActions } from "@/features/leads/components/lead-actions";
+import { LeadAssignBroker } from "@/features/leads/components/lead-assign-broker";
+import { LeadPropertyMatches } from "@/features/leads/components/lead-property-matches";
 import { LEAD_SOURCE_LABELS, LEAD_STAGE_LABELS, LEAD_TEMPERATURE_LABELS } from "@/lib/labels";
 import { formatDateTime } from "@/lib/utils";
 import { LeadNotesForm } from "@/components/modules/leads/lead-notes-form";
@@ -18,12 +23,18 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [lead, session] = await Promise.all([getLeadById(id), auth()]);
+  const [lead, session, matches, brokers] = await Promise.all([
+    getLeadById(id),
+    auth(),
+    getPropertyMatchesForLead(id).catch(() => []),
+    getActiveBrokers(),
+  ]);
   if (!lead) notFound();
 
   const role = session?.user?.role as Role | undefined;
   const canEdit = role ? hasPermission(role, "leads:edit") : false;
   const canDelete = role ? hasPermission(role, "leads:delete") : false;
+  const canAssign = role ? hasPermission(role, "leads:assign") : false;
 
   return (
     <section className="space-y-6" aria-labelledby="page-title">
@@ -41,6 +52,23 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
         </div>
       </header>
 
+      {canAssign && brokers.length > 0 && (
+        <section aria-label="Atribuição de corretor">
+          <Card>
+            <CardHeader>
+              <CardTitle>Roleta / Atribuição</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <LeadAssignBroker
+                leadId={lead.id}
+                currentBrokerId={lead.brokerId}
+                brokers={brokers}
+              />
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
       <section aria-label="Detalhes do lead" className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -52,6 +80,25 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
             <p><span className="text-muted-foreground">Interesse:</span> {lead.interest ?? "—"}</p>
             <p><span className="text-muted-foreground">Faixa de preço:</span> {lead.priceRange ?? "—"}</p>
             <p><span className="text-muted-foreground">Corretor:</span> {lead.broker?.name ?? "—"}</p>
+            {lead.property && (
+              <p>
+                <span className="text-muted-foreground">Imóvel vinculado:</span>{" "}
+                <Link href={`/imoveis/${lead.property.id}`} className="text-primary hover:underline">
+                  {lead.property.code} — {lead.property.title}
+                </Link>
+              </p>
+            )}
+            <p>
+              <span className="text-muted-foreground">Consentimento LGPD:</span>{" "}
+              {lead.lgpdConsentAt ? (
+                <>
+                  Aceito em {formatDateTime(lead.lgpdConsentAt)}
+                  {lead.lgpdConsentVersion ? ` (v${lead.lgpdConsentVersion})` : ""}
+                </>
+              ) : (
+                "Não registrado"
+              )}
+            </p>
             <p><span className="text-muted-foreground">Observações:</span> {lead.notes ?? "—"}</p>
           </CardContent>
         </Card>
@@ -71,6 +118,22 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section aria-label="Imóveis sugeridos">
+        <Card>
+          <CardHeader>
+            <CardTitle>Imóveis sugeridos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LeadPropertyMatches
+              leadId={lead.id}
+              matches={matches}
+              linkedPropertyId={lead.propertyId}
+              canEdit={canEdit}
+            />
           </CardContent>
         </Card>
       </section>
