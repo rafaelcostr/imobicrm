@@ -70,3 +70,7 @@ src/
 ## Segurança
 
 Consulte [SECURITY.md](./SECURITY.md) para detalhes de pentest, headers, LGPD e boas práticas.
+
+## Autor
+
+Desenvolvido por [rafaelcostr](https://github.com/rafaelcostr).
