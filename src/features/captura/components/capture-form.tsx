@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { capturePublicLead } from "@/actions/leads";
-import { Building2, CheckCircle2 } from "lucide-react";
+import { BrandHeader } from "@/components/layout/brand-header";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { toast } from "sonner";
 
 export function CaptureForm() {
@@ -25,6 +27,7 @@ export function CaptureForm() {
         email: (form.get("email") as string) || undefined,
         interest: (form.get("interest") as string) || undefined,
         website: (form.get("website") as string) || undefined,
+        lgpdConsent: form.get("lgpd") === "on",
       });
       setSuccess(true);
       toast.success("Cadastro realizado! Entraremos em contato em breve.");
@@ -38,16 +41,12 @@ export function CaptureForm() {
 
   return (
     <Card>
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Building2 className="h-7 w-7" aria-hidden="true" />
-        </div>
-        <h1 id="captura-heading" className="text-2xl font-semibold leading-none tracking-tight">
-          Encontre seu imóvel ideal
-        </h1>
-        <CardDescription>
-          Preencha o formulário e um corretor especializado entrará em contato com você
-        </CardDescription>
+      <CardHeader>
+        <BrandHeader
+          headingId="captura-heading"
+          title="Encontre seu imóvel ideal"
+          description="Preencha o formulário e um corretor especializado entrará em contato com você"
+        />
       </CardHeader>
       <CardContent>
         {success ? (
@@ -83,12 +82,25 @@ export function CaptureForm() {
               <Label htmlFor="interest">Interesse</Label>
               <Input id="interest" name="interest" placeholder="Ex: Apartamento 3 quartos" maxLength={200} />
             </div>
+            <div className="flex items-start gap-2">
+              <input
+                id="lgpd"
+                name="lgpd"
+                type="checkbox"
+                required
+                className="mt-1 h-4 w-4 rounded border-border accent-primary"
+              />
+              <Label htmlFor="lgpd" className="text-xs font-normal leading-relaxed text-muted-foreground">
+                Li e aceito a{" "}
+                <Link href="/privacidade" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                  política de privacidade
+                </Link>{" "}
+                e autorizo o uso dos meus dados conforme a LGPD. *
+              </Label>
+            </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Enviando..." : "Quero ser contactado"}
             </Button>
-            <p className="text-center text-xs text-muted-foreground">
-              Seus dados estão protegidos conforme a LGPD
-            </p>
           </form>
         )}
       </CardContent>

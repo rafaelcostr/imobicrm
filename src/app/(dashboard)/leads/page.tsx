@@ -50,6 +50,7 @@ export default async function LeadsPage({
           </CardHeader>
           <CardContent className="overflow-x-auto">
             <table className="w-full text-sm">
+              <caption className="sr-only">Lista de leads cadastrados</caption>
               <thead>
                 <tr className="border-b border-border text-left text-muted-foreground">
                   <th scope="col" className="pb-3 pr-4 font-medium">Nome</th>

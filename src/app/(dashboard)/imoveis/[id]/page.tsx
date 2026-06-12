@@ -1,11 +1,14 @@
 import { notFound } from "next/navigation";
 import { getPropertyById } from "@/actions/properties";
+import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { PropertyActions } from "@/features/properties/components/property-actions";
 import { PROPERTY_PURPOSE_LABELS, PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS } from "@/lib/labels";
 import { formatCurrency } from "@/lib/utils";
-import { Bed, Bath, Car, Maximize, Share2, Pencil } from "lucide-react";
+import { Bed, Bath, Car, Maximize } from "lucide-react";
+import type { Role } from "@prisma/client";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -15,8 +18,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function PropertyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const property = await getPropertyById(id);
+  const [property, session] = await Promise.all([getPropertyById(id), auth()]);
   if (!property) notFound();
+
+  const role = session?.user?.role as Role | undefined;
+  const canEdit = role ? hasPermission(role, "properties:edit") : false;
+  const canDelete = role ? hasPermission(role, "properties:delete") : false;
 
   const address = [
     property.street,
@@ -35,16 +42,7 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
           <h1 id="page-title" className="text-2xl font-bold">{property.title}</h1>
           <p className="text-2xl font-bold text-primary">{formatCurrency(Number(property.price))}</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Pencil className="mr-2 h-4 w-4" />
-            Editar
-          </Button>
-          <Button size="sm">
-            <Share2 className="mr-2 h-4 w-4" />
-            Compartilhar
-          </Button>
-        </div>
+        <PropertyActions propertyId={property.id} canEdit={canEdit} canDelete={canDelete} />
       </header>
 
       <section aria-label="Galeria de fotos" className="grid h-64 place-items-center rounded-xl bg-muted">

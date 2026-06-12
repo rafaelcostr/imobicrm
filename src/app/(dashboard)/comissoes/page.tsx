@@ -44,6 +44,7 @@ export default async function CommissionsPage() {
           <CardHeader><CardTitle>Relatório mensal</CardTitle></CardHeader>
           <CardContent className="overflow-x-auto">
             <table className="w-full text-sm">
+              <caption className="sr-only">Comissões do mês corrente</caption>
               <thead>
                 <tr className="border-b border-border text-left text-muted-foreground">
                   <th scope="col" className="pb-3 pr-4">Imóvel</th>

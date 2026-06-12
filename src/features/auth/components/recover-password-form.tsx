@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Building2 } from "lucide-react";
+import { BrandHeader } from "@/components/layout/brand-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { requestPasswordResetAction } from "@/actions/auth";
 import { toast } from "sonner";
 
@@ -32,14 +32,11 @@ export function RecoverPasswordForm() {
 
   return (
     <Card>
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Building2 className="h-6 w-6" />
-        </div>
-        <CardTitle>Recuperar senha</CardTitle>
-        <CardDescription>
-          Informe seu e-mail e enviaremos instruções para redefinir sua senha
-        </CardDescription>
+      <CardHeader>
+        <BrandHeader
+          title="Recuperar senha"
+          description="Informe seu e-mail e enviaremos instruções para redefinir sua senha"
+        />
       </CardHeader>
       <CardContent>
         {sent ? (

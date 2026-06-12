@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AppToaster } from "@/components/providers/app-toaster";
 import { AuthProvider } from "@/components/providers/session-provider";
+import { rootMetadata } from "@/lib/metadata";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,16 +16,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "ImobiCRM — CRM Imobiliário",
-    template: "%s | ImobiCRM",
-  },
-  description:
-    "Plataforma SaaS de gestão imobiliária para corretores e imobiliárias. Leads, funil de vendas, imóveis, comissões e relatórios em um só lugar.",
-  keywords: ["CRM imobiliário", "corretor de imóveis", "gestão de leads", "ImobiCRM"],
-  robots: { index: false, follow: false },
-};
+export const metadata: Metadata = rootMetadata;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

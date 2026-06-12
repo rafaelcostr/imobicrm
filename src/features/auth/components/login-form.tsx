@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Building2 } from "lucide-react";
+import { BrandHeader } from "@/components/layout/brand-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { loginAction } from "@/actions/auth";
 import { toast } from "sonner";
 
@@ -33,12 +33,11 @@ export function LoginForm() {
 
   return (
     <Card>
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Building2 className="h-6 w-6" />
-        </div>
-        <CardTitle className="text-2xl">ImobiCRM</CardTitle>
-        <CardDescription>Entre com seu e-mail e senha para acessar o sistema</CardDescription>
+      <CardHeader>
+        <BrandHeader
+          title="ImobiCRM"
+          description="Entre com seu e-mail e senha para acessar o sistema"
+        />
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">

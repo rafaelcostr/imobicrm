@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   LeadSource,
+  LeadStage,
   LeadTemperature,
   PropertyType,
   PropertyPurpose,
@@ -27,6 +28,10 @@ export const leadSchema = z.object({
   source: z.nativeEnum(LeadSource),
   temperature: z.nativeEnum(LeadTemperature).optional(),
   brokerId: z.string().optional(),
+});
+
+export const leadUpdateSchema = leadSchema.partial().extend({
+  stage: z.nativeEnum(LeadStage).optional(),
 });
 
 export const propertySchema = z.object({
@@ -68,4 +73,7 @@ export const publicLeadSchema = z.object({
   phone: z.string().min(8).max(20),
   email: z.string().email().optional().or(z.literal("")),
   interest: z.string().max(200).optional(),
+  lgpdConsent: z.literal(true, {
+    message: "É necessário aceitar a política de privacidade.",
+  }),
 });

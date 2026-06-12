@@ -1,10 +1,14 @@
 import { notFound } from "next/navigation";
 import { getLeadById } from "@/actions/leads";
+import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { LeadActions } from "@/features/leads/components/lead-actions";
 import { LEAD_SOURCE_LABELS, LEAD_STAGE_LABELS, LEAD_TEMPERATURE_LABELS } from "@/lib/labels";
 import { formatDateTime } from "@/lib/utils";
 import { LeadNotesForm } from "@/components/modules/leads/lead-notes-form";
+import type { Role } from "@prisma/client";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -14,8 +18,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const lead = await getLeadById(id);
+  const [lead, session] = await Promise.all([getLeadById(id), auth()]);
   if (!lead) notFound();
+
+  const role = session?.user?.role as Role | undefined;
+  const canEdit = role ? hasPermission(role, "leads:edit") : false;
+  const canDelete = role ? hasPermission(role, "leads:delete") : false;
 
   return (
     <section className="space-y-6" aria-labelledby="page-title">
@@ -24,11 +32,12 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
           <h1 id="page-title" className="text-2xl font-bold">{lead.name}</h1>
           <p className="text-muted-foreground">{lead.phone} · {lead.email ?? "Sem e-mail"}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant={lead.temperature === "QUENTE" ? "hot" : lead.temperature === "FRIO" ? "cold" : "warning"}>
             {LEAD_TEMPERATURE_LABELS[lead.temperature]}
           </Badge>
           <Badge variant="secondary">{LEAD_STAGE_LABELS[lead.stage]}</Badge>
+          <LeadActions leadId={lead.id} canEdit={canEdit} canDelete={canDelete} />
         </div>
       </header>
 

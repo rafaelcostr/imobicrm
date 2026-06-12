@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { formatCurrency } from "@/lib/utils";
+import { calcTrend } from "@/lib/trend";
 import { LEAD_SOURCE_LABELS } from "@/lib/labels";
 
 const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -42,8 +43,11 @@ export async function getDashboardStats() {
     leadsLastMonth,
     totalProperties,
     scheduledVisits,
+    visitsLastMonth,
     proposalsSent,
+    proposalsLastMonth,
     closedSales,
+    closedSalesLastMonth,
     commissionsPending,
     commissionsPaid,
     leadsBySource,
@@ -61,14 +65,31 @@ export async function getDashboardStats() {
       where: {
         ...(isBroker ? { brokerId: user.id } : {}),
         scheduledAt: { gte: startOfMonth },
-        completed: false,
+      },
+    }),
+    prisma.visit.count({
+      where: {
+        ...(isBroker ? { brokerId: user.id } : {}),
+        scheduledAt: { gte: startOfLastMonth, lte: endOfLastMonth },
       },
     }),
     prisma.proposal.count({
       where: { ...(isBroker ? { brokerId: user.id } : {}), sentAt: { gte: startOfMonth } },
     }),
+    prisma.proposal.count({
+      where: {
+        ...(isBroker ? { brokerId: user.id } : {}),
+        sentAt: { gte: startOfLastMonth, lte: endOfLastMonth },
+      },
+    }),
     prisma.sale.count({
       where: { ...(isBroker ? { brokerId: user.id } : {}), closedAt: { gte: startOfMonth } },
+    }),
+    prisma.sale.count({
+      where: {
+        ...(isBroker ? { brokerId: user.id } : {}),
+        closedAt: { gte: startOfLastMonth, lte: endOfLastMonth },
+      },
     }),
     prisma.commission.aggregate({
       where: { ...(isBroker ? { brokerId: user.id } : {}), status: { in: ["PENDENTE", "EM_PROCESSAMENTO"] } },
@@ -112,9 +133,14 @@ export async function getDashboardStats() {
     }),
   ]);
 
-  const leadTrend = leadsLastMonth > 0
-    ? Math.round(((leadsThisMonth - leadsLastMonth) / leadsLastMonth) * 100)
-    : leadsThisMonth > 0 ? 100 : 0;
+  const leadTrend = calcTrend(leadsThisMonth, leadsLastMonth);
+  const visitTrend = calcTrend(scheduledVisits, visitsLastMonth);
+  const proposalTrend = calcTrend(proposalsSent, proposalsLastMonth);
+  const salesTrend = calcTrend(closedSales, closedSalesLastMonth);
+
+  const conversionThisMonth = leadsThisMonth > 0 ? (closedSales / leadsThisMonth) * 100 : 0;
+  const conversionLastMonth = leadsLastMonth > 0 ? (closedSalesLastMonth / leadsLastMonth) * 100 : 0;
+  const conversionTrend = calcTrend(conversionThisMonth, conversionLastMonth);
 
   const conversionRate = totalLeads > 0
     ? ((closedSales / totalLeads) * 100).toFixed(1)
@@ -173,6 +199,10 @@ export async function getDashboardStats() {
       commissionPaid: formatCurrency(Number(commissionsPaid._sum.amount ?? 0)),
       conversionRate: `${conversionRate}%`,
       leadTrend,
+      visitTrend,
+      proposalTrend,
+      salesTrend,
+      conversionTrend,
     },
     sourceChart,
     salesByMonth: buildSalesChart(salesByMonth),

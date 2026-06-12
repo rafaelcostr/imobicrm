@@ -3,10 +3,11 @@
 import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { BrandHeader } from "@/components/layout/brand-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { resetPasswordAction } from "@/actions/auth";
 import { toast } from "sonner";
 
@@ -58,8 +59,10 @@ export function ResetPasswordForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Redefinir senha</CardTitle>
-        <CardDescription>Crie uma nova senha segura para sua conta</CardDescription>
+        <BrandHeader
+          title="Redefinir senha"
+          description="Crie uma nova senha segura para sua conta"
+        />
       </CardHeader>
       <CardContent>
         <Suspense fallback={<p className="text-sm text-muted-foreground">Carregando...</p>}>

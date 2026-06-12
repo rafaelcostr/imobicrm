@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
 import { sanitizeString } from "@/lib/utils";
-import { leadSchema, publicLeadSchema } from "@/lib/validations/schemas";
+import { leadSchema, leadUpdateSchema, publicLeadSchema } from "@/lib/validations/schemas";
 import { assertRateLimit } from "@/lib/server-rate-limit";
 import type { z } from "zod";
 
@@ -106,21 +106,43 @@ export async function createLead(data: z.infer<typeof leadSchema>) {
   return lead;
 }
 
-export async function updateLead(id: string, data: Partial<z.infer<typeof leadSchema>>) {
+export async function updateLead(id: string, data: z.infer<typeof leadUpdateSchema>) {
   const user = await requireAuth();
   requirePermission(user.role as Role, "leads:edit");
 
   const existing = await getLeadById(id);
   if (!existing) throw new Error("Lead não encontrado");
 
+  const parsed = leadUpdateSchema.parse(data);
+  const stageChanged = parsed.stage && parsed.stage !== existing.stage;
+
   const lead = await prisma.lead.update({
     where: { id },
     data: {
-      ...(data.name && { name: sanitizeString(data.name, 120) }),
-      ...(data.phone && { phone: sanitizeString(data.phone, 20) }),
-      ...(data.source && { source: data.source }),
-      ...(data.temperature && { temperature: data.temperature }),
-      ...(data.notes !== undefined && { notes: data.notes ? sanitizeString(data.notes, 2000) : null }),
+      ...(parsed.name && { name: sanitizeString(parsed.name, 120) }),
+      ...(parsed.phone && { phone: sanitizeString(parsed.phone, 20) }),
+      ...(parsed.whatsapp !== undefined && {
+        whatsapp: parsed.whatsapp ? sanitizeString(parsed.whatsapp, 20) : null,
+      }),
+      ...(parsed.email !== undefined && {
+        email: parsed.email ? parsed.email.toLowerCase() : null,
+      }),
+      ...(parsed.city !== undefined && {
+        city: parsed.city ? sanitizeString(parsed.city, 80) : null,
+      }),
+      ...(parsed.state !== undefined && { state: parsed.state?.toUpperCase() ?? null }),
+      ...(parsed.interest !== undefined && {
+        interest: parsed.interest ? sanitizeString(parsed.interest, 200) : null,
+      }),
+      ...(parsed.priceRange !== undefined && {
+        priceRange: parsed.priceRange ? sanitizeString(parsed.priceRange, 80) : null,
+      }),
+      ...(parsed.notes !== undefined && {
+        notes: parsed.notes ? sanitizeString(parsed.notes, 2000) : null,
+      }),
+      ...(parsed.source && { source: parsed.source }),
+      ...(parsed.temperature && { temperature: parsed.temperature }),
+      ...(parsed.stage && { stage: parsed.stage }),
       lastContactAt: new Date(),
     },
   });
@@ -129,12 +151,17 @@ export async function updateLead(id: string, data: Partial<z.infer<typeof leadSc
     data: {
       leadId: id,
       userId: user.id,
-      action: "LEAD_ATUALIZADO",
-      description: "Informações do lead atualizadas",
+      action: stageChanged ? "ETAPA_ALTERADA" : "LEAD_ATUALIZADO",
+      ...(stageChanged && { fromStage: existing.stage, toStage: parsed.stage }),
+      description: stageChanged
+        ? `Lead movido para ${parsed.stage}`
+        : "Informações do lead atualizadas",
     },
   });
 
   revalidatePath("/leads");
+  revalidatePath("/funil");
+  revalidatePath("/dashboard");
   revalidatePath(`/leads/${id}`);
   return lead;
 }
@@ -143,8 +170,11 @@ export async function deleteLead(id: string) {
   const user = await requireAuth();
   requirePermission(user.role as Role, "leads:delete");
 
+  await getLeadById(id);
+
   await prisma.lead.delete({ where: { id } });
   revalidatePath("/leads");
+  revalidatePath("/funil");
   revalidatePath("/dashboard");
 }
 
@@ -209,6 +239,7 @@ export async function capturePublicLead(data: {
   email?: string;
   interest?: string;
   website?: string;
+  lgpdConsent: boolean;
 }) {
   if (data.website) {
     return { success: true };

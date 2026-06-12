@@ -94,25 +94,44 @@ export async function createProperty(data: z.infer<typeof propertySchema>) {
   return property;
 }
 
-export async function updateProperty(id: string, data: Partial<z.infer<typeof propertySchema>>) {
+export async function updateProperty(id: string, data: z.infer<typeof propertySchema>) {
   const user = await requireAuth();
   requirePermission(user.role as Role, "properties:edit");
 
   await getPropertyById(id);
 
+  const parsed = propertySchema.parse(data);
+
   const property = await prisma.property.update({
     where: { id },
     data: {
-      ...(data.title && { title: sanitizeString(data.title, 200) }),
-      ...(data.price && { price: data.price }),
-      ...(data.status && { status: data.status }),
-      ...(data.description !== undefined && {
-        description: data.description ? sanitizeString(data.description, 5000) : null,
-      }),
+      code: sanitizeString(parsed.code, 30).toUpperCase(),
+      title: sanitizeString(parsed.title, 200),
+      description: parsed.description ? sanitizeString(parsed.description, 5000) : null,
+      type: parsed.type,
+      purpose: parsed.purpose,
+      price: parsed.price,
+      condoFee: parsed.condoFee ?? null,
+      iptu: parsed.iptu ?? null,
+      bedrooms: parsed.bedrooms,
+      bathrooms: parsed.bathrooms,
+      suites: parsed.suites,
+      garages: parsed.garages,
+      totalArea: parsed.totalArea ?? null,
+      builtArea: parsed.builtArea ?? null,
+      street: parsed.street ?? null,
+      number: parsed.number ?? null,
+      complement: parsed.complement ?? null,
+      neighborhood: parsed.neighborhood ?? null,
+      city: sanitizeString(parsed.city, 100),
+      state: parsed.state.toUpperCase(),
+      zipCode: parsed.zipCode ?? null,
+      status: parsed.status ?? "DISPONIVEL",
     },
   });
 
   revalidatePath("/imoveis");
+  revalidatePath("/dashboard");
   revalidatePath(`/imoveis/${id}`);
   return property;
 }

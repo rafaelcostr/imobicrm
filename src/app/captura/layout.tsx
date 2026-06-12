@@ -1,13 +1,10 @@
-import type { Metadata } from "next";
-import { pageMetadata } from "@/lib/metadata";
+import { publicPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
-  ...pageMetadata(
-    "Captação de Leads",
-    "Solicite contato com um corretor especializado e encontre o imóvel ideal.",
-  ),
-  robots: { index: true, follow: true },
-};
+const TITLE = "Encontre seu imóvel ideal";
+const DESCRIPTION =
+  "Cadastre seu interesse e receba atendimento de um corretor especializado.";
+
+export const metadata = publicPageMetadata(TITLE, DESCRIPTION, "/captura");
 
 export default function CapturaLayout({ children }: { children: React.ReactNode }) {
   return (
