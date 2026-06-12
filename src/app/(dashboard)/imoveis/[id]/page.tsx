@@ -5,6 +5,8 @@ import { hasPermission } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PropertyActions } from "@/features/properties/components/property-actions";
+import { PropertyMediaUpload } from "@/features/properties/components/property-media-upload";
+import { isStorageConfigured } from "@/lib/storage";
 import { PROPERTY_PURPOSE_LABELS, PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS } from "@/lib/labels";
 import { formatCurrency } from "@/lib/utils";
 import { Bed, Bath, Car, Maximize } from "lucide-react";
@@ -45,8 +47,13 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
         <PropertyActions propertyId={property.id} canEdit={canEdit} canDelete={canDelete} />
       </header>
 
-      <section aria-label="Galeria de fotos" className="grid h-64 place-items-center rounded-xl bg-muted">
-        <p className="text-muted-foreground">Galeria de fotos ({property.media.length} mídias)</p>
+      <section aria-label="Galeria de fotos">
+        <PropertyMediaUpload
+          propertyId={property.id}
+          media={property.media}
+          canEdit={canEdit}
+          storageConfigured={isStorageConfigured()}
+        />
       </section>
 
       <section aria-label="Características">
@@ -81,6 +88,16 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
             <p><span className="text-muted-foreground">Condomínio:</span> {property.condoFee ? formatCurrency(Number(property.condoFee)) : "—"}</p>
             <p><span className="text-muted-foreground">IPTU:</span> {property.iptu ? formatCurrency(Number(property.iptu)) : "—"}</p>
             <p><span className="text-muted-foreground">Corretor:</span> {property.broker?.name ?? "—"}</p>
+            <p>
+              <span className="text-muted-foreground">Vitrine pública:</span>{" "}
+              {property.isPublished ? (
+                <a href={`/vitrine/${property.code}`} className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                  Publicado
+                </a>
+              ) : (
+                "Não publicado"
+              )}
+            </p>
           </CardContent>
         </Card>
       </section>

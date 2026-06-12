@@ -12,6 +12,7 @@ import { requirePermission } from "@/lib/permissions";
 import { sanitizeString } from "@/lib/utils";
 import { propertySchema } from "@/lib/validations/schemas";
 import { buildPaginatedResult, parsePagination } from "@/lib/pagination";
+import { isStorageConfigured, uploadFile, deleteFileByUrl, inferMediaType } from "@/lib/storage";
 import type { z } from "zod";
 
 function buildPropertyWhere(
@@ -123,6 +124,8 @@ export async function createProperty(data: z.infer<typeof propertySchema>) {
       state: parsed.state.toUpperCase(),
       zipCode: parsed.zipCode,
       status: parsed.status ?? "DISPONIVEL",
+      isPublished: parsed.isPublished ?? false,
+      publishedAt: parsed.isPublished ? new Date() : null,
       brokerId: user.id,
     },
   });
@@ -165,11 +168,16 @@ export async function updateProperty(id: string, data: z.infer<typeof propertySc
       state: parsed.state.toUpperCase(),
       zipCode: parsed.zipCode ?? null,
       status: parsed.status ?? "DISPONIVEL",
+      ...(parsed.isPublished !== undefined && {
+        isPublished: parsed.isPublished,
+        publishedAt: parsed.isPublished ? new Date() : null,
+      }),
     },
   });
 
   revalidatePath("/imoveis");
   revalidatePath("/dashboard");
+  revalidatePath("/vitrine");
   revalidatePath(`/imoveis/${id}`);
   return property;
 }
@@ -182,6 +190,64 @@ export async function deleteProperty(id: string) {
 
   await prisma.property.delete({ where: { id } });
   revalidatePath("/imoveis");
+  revalidatePath("/vitrine");
+}
+
+export async function uploadPropertyMedia(propertyId: string, formData: FormData) {
+  const user = await requireAuth();
+  requirePermission(user.role as Role, "properties:edit");
+
+  if (!isStorageConfigured()) {
+    throw new Error("Upload indisponível: configure R2/S3 nas variáveis S3_* do .env");
+  }
+
+  await getPropertyById(propertyId);
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("Selecione um arquivo para upload");
+  }
+
+  const uploaded = await uploadFile(file, "property", propertyId, { allowPdf: true });
+  const type = inferMediaType(uploaded.contentType);
+
+  const count = await prisma.propertyMedia.count({ where: { propertyId } });
+
+  const media = await prisma.propertyMedia.create({
+    data: {
+      propertyId,
+      url: uploaded.url,
+      type,
+      fileName: file.name,
+      sortOrder: count,
+    },
+  });
+
+  revalidatePath(`/imoveis/${propertyId}`);
+  revalidatePath("/vitrine");
+  return media;
+}
+
+export async function deletePropertyMedia(mediaId: string) {
+  const user = await requireAuth();
+  requirePermission(user.role as Role, "properties:edit");
+
+  const media = await prisma.propertyMedia.findUnique({
+    where: { id: mediaId },
+    include: { property: true },
+  });
+  if (!media) throw new Error("Mídia não encontrada");
+
+  await getPropertyById(media.propertyId);
+
+  if (isStorageConfigured() && media.url.startsWith("http")) {
+    await deleteFileByUrl(media.url).catch(() => undefined);
+  }
+
+  await prisma.propertyMedia.delete({ where: { id: mediaId } });
+
+  revalidatePath(`/imoveis/${media.propertyId}`);
+  revalidatePath("/vitrine");
 }
 
 export async function addPropertyMedia(

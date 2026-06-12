@@ -16,6 +16,11 @@ export async function middleware(request: NextRequest) {
     if (limited) return applySecurityHeaders(limited);
   }
 
+  if (pathname.startsWith("/vitrine")) {
+    const limited = rateLimitRoute(request, "vitrine-page", 60, 60_000);
+    if (limited) return applySecurityHeaders(limited);
+  }
+
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
@@ -23,7 +28,7 @@ export async function middleware(request: NextRequest) {
 
   const isLoggedIn = !!token;
 
-  const publicRoutes = ["/captura"];
+  const publicRoutes = ["/captura", "/vitrine", "/privacidade"];
   const authRoutes = ["/login", "/recuperar-senha", "/redefinir-senha"];
 
   let response: NextResponse;

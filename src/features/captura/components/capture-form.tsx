@@ -11,7 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { toast } from "sonner";
 
-export function CaptureForm() {
+interface CaptureFormProps {
+  propertyCode?: string;
+  propertyTitle?: string;
+  defaultInterest?: string;
+}
+
+export function CaptureForm({ propertyCode, propertyTitle, defaultInterest }: CaptureFormProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -26,6 +32,7 @@ export function CaptureForm() {
         phone: form.get("phone") as string,
         email: (form.get("email") as string) || undefined,
         interest: (form.get("interest") as string) || undefined,
+        propertyCode: propertyCode || undefined,
         website: (form.get("website") as string) || undefined,
         lgpdConsent: form.get("lgpd") === "on",
       });
@@ -44,8 +51,12 @@ export function CaptureForm() {
       <CardHeader>
         <BrandHeader
           headingId="captura-heading"
-          title="Encontre seu imóvel ideal"
-          description="Preencha o formulário e um corretor especializado entrará em contato com você"
+          title={propertyTitle ? `Interesse em ${propertyTitle}` : "Encontre seu imóvel ideal"}
+          description={
+            propertyTitle
+              ? "Preencha seus dados e o corretor responsável entrará em contato"
+              : "Preencha o formulário e um corretor especializado entrará em contato com você"
+          }
         />
       </CardHeader>
       <CardContent>
@@ -54,7 +65,12 @@ export function CaptureForm() {
             <CheckCircle2 className="h-12 w-12 text-emerald-500" aria-hidden="true" />
             <p className="font-medium">Obrigado pelo interesse!</p>
             <p className="text-sm text-muted-foreground">Seu lead foi registrado automaticamente no ImobiCRM.</p>
-            <Button variant="outline" onClick={() => setSuccess(false)}>Enviar outro</Button>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button variant="outline" onClick={() => setSuccess(false)}>Enviar outro</Button>
+              <Button variant="outline" asChild>
+                <Link href="/vitrine">Ver imóveis</Link>
+              </Button>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -80,7 +96,13 @@ export function CaptureForm() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="interest">Interesse</Label>
-              <Input id="interest" name="interest" placeholder="Ex: Apartamento 3 quartos" maxLength={200} />
+              <Input
+                id="interest"
+                name="interest"
+                placeholder="Ex: Apartamento 3 quartos"
+                maxLength={200}
+                defaultValue={defaultInterest}
+              />
             </div>
             <div className="flex items-start gap-2">
               <input
@@ -101,6 +123,11 @@ export function CaptureForm() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Enviando..." : "Quero ser contactado"}
             </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              <Link href="/vitrine" className="text-primary hover:underline">
+                Ver imóveis disponíveis
+              </Link>
+            </p>
           </form>
         )}
       </CardContent>

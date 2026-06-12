@@ -118,9 +118,16 @@ async function main() {
         state: "SP",
         zipCode: "01001-000",
         status: PropertyStatus.DISPONIVEL,
+        isPublished: true,
+        publishedAt: new Date(),
         brokerId: brokers[0].id,
         media: {
-          create: [{ type: "IMAGE", url: "/uploads/ap001.jpg", fileName: "ap001.jpg", sortOrder: 0 }],
+          create: [{
+            type: "IMAGE",
+            url: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800",
+            fileName: "ap001.jpg",
+            sortOrder: 0,
+          }],
         },
       },
     }),
@@ -142,7 +149,17 @@ async function main() {
         city: "Barueri",
         state: "SP",
         status: PropertyStatus.DISPONIVEL,
+        isPublished: true,
+        publishedAt: new Date(),
         brokerId: brokers[1].id,
+        media: {
+          create: [{
+            type: "IMAGE",
+            url: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800",
+            fileName: "cs002.jpg",
+            sortOrder: 0,
+          }],
+        },
       },
     }),
     prisma.property.create({

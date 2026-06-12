@@ -18,7 +18,10 @@ export const authConfig: NextAuthConfig = {
         pathname.startsWith("/login") ||
         pathname.startsWith("/recuperar-senha") ||
         pathname.startsWith("/redefinir-senha");
-      const isPublicPage = pathname.startsWith("/captura");
+      const isPublicPage =
+        pathname.startsWith("/captura") ||
+        pathname.startsWith("/vitrine") ||
+        pathname.startsWith("/privacidade");
 
       if (isPublicPage) return true;
       if (isAuthPage) return !isLoggedIn || Response.redirect(new URL("/dashboard", request.url));

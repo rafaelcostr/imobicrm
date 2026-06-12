@@ -41,6 +41,7 @@ type PropertyFormData = Pick<
   | "state"
   | "zipCode"
   | "status"
+  | "isPublished"
 >;
 
 export function EditPropertyForm({ property }: { property: PropertyFormData }) {
@@ -49,6 +50,7 @@ export function EditPropertyForm({ property }: { property: PropertyFormData }) {
   const [type, setType] = useState<PropertyType>(property.type);
   const [purpose, setPurpose] = useState<PropertyPurpose>(property.purpose);
   const [status, setStatus] = useState<PropertyStatus>(property.status);
+  const [isPublished, setIsPublished] = useState(property.isPublished);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -78,6 +80,7 @@ export function EditPropertyForm({ property }: { property: PropertyFormData }) {
         city: form.get("city") as string,
         state: form.get("state") as string,
         zipCode: (form.get("zipCode") as string) || undefined,
+        isPublished,
       });
       toast.success("Imóvel atualizado!");
       router.push(`/imoveis/${property.id}`);
@@ -169,6 +172,21 @@ export function EditPropertyForm({ property }: { property: PropertyFormData }) {
           </div>
           <div className="space-y-2"><Label htmlFor="neighborhood">Bairro</Label><Input id="neighborhood" name="neighborhood" defaultValue={property.neighborhood ?? ""} /></div>
           <div className="space-y-2"><Label htmlFor="description">Descrição</Label><Textarea id="description" name="description" rows={4} defaultValue={property.description ?? ""} /></div>
+          <div className="flex items-start gap-2 rounded-lg border border-border p-3">
+            <input
+              id="isPublished"
+              type="checkbox"
+              checked={isPublished}
+              onChange={(e) => setIsPublished(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-border accent-primary"
+            />
+            <div>
+              <Label htmlFor="isPublished" className="cursor-pointer">Publicar na vitrine</Label>
+              <p className="text-xs text-muted-foreground">
+                Imóveis publicados aparecem em /vitrine (somente com status Disponível).
+              </p>
+            </div>
+          </div>
           <div className="flex gap-2">
             <Button type="submit" disabled={loading}>{loading ? "Salvando..." : "Salvar alterações"}</Button>
             <Button type="button" variant="outline" onClick={() => router.back()}>Cancelar</Button>

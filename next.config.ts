@@ -13,6 +13,16 @@ const securityHeaders = [
   },
 ];
 
+const r2PublicHost = process.env.S3_PUBLIC_URL
+  ? (() => {
+      try {
+        return new URL(process.env.S3_PUBLIC_URL).hostname;
+      } catch {
+        return null;
+      }
+    })()
+  : null;
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   outputFileTracingRoot: path.join(__dirname),
@@ -20,6 +30,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "*.amazonaws.com" },
+      { protocol: "https", hostname: "*.r2.dev" },
+      ...(r2PublicHost ? [{ protocol: "https" as const, hostname: r2PublicHost }] : []),
     ],
   },
   async headers() {

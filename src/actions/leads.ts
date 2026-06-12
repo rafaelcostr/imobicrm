@@ -11,6 +11,7 @@ import { assertRateLimit } from "@/lib/server-rate-limit";
 import { buildPaginatedResult, parsePagination } from "@/lib/pagination";
 import { assignBrokerRoundRobin } from "@/lib/lead-assignment";
 import { LGPD_CONSENT_VERSION } from "@/lib/lgpd";
+import { isEmailConfigured, sendLeadCaptureEmail } from "@/lib/email";
 import type { z } from "zod";
 
 function buildLeadWhere(
@@ -323,6 +324,7 @@ export async function capturePublicLead(data: {
   phone: string;
   email?: string;
   interest?: string;
+  propertyCode?: string;
   website?: string;
   lgpdConsent: boolean;
 }) {
@@ -333,8 +335,24 @@ export async function capturePublicLead(data: {
   await assertRateLimit("captura", 5, 60_000);
 
   const parsed = publicLeadSchema.parse(data);
-  const brokerId = await assignBrokerRoundRobin();
+  let brokerId = await assignBrokerRoundRobin();
+  let propertyId: string | undefined;
   const consentAt = new Date();
+
+  if (parsed.propertyCode) {
+    const property = await prisma.property.findFirst({
+      where: {
+        code: { equals: parsed.propertyCode, mode: "insensitive" },
+        isPublished: true,
+        status: "DISPONIVEL",
+      },
+      select: { id: true, brokerId: true, title: true, code: true },
+    });
+    if (property) {
+      propertyId = property.id;
+      if (property.brokerId) brokerId = property.brokerId;
+    }
+  }
 
   const lead = await prisma.lead.create({
     data: {
@@ -344,6 +362,7 @@ export async function capturePublicLead(data: {
       interest: parsed.interest ? sanitizeString(parsed.interest, 200) : null,
       source: "SITE",
       brokerId,
+      propertyId,
       lgpdConsentAt: consentAt,
       lgpdConsentVersion: LGPD_CONSENT_VERSION,
     },
@@ -353,9 +372,11 @@ export async function capturePublicLead(data: {
     data: {
       leadId: lead.id,
       action: "CAPTACAO_PUBLICA",
-      description: brokerId
-        ? `Lead captado pela página pública — roleta → corretor atribuído (LGPD v${LGPD_CONSENT_VERSION})`
-        : `Lead captado pela página pública (LGPD v${LGPD_CONSENT_VERSION})`,
+      description: propertyId
+        ? `Lead captado pela vitrine — imóvel vinculado (LGPD v${LGPD_CONSENT_VERSION})`
+        : brokerId
+          ? `Lead captado pela página pública — roleta → corretor atribuído (LGPD v${LGPD_CONSENT_VERSION})`
+          : `Lead captado pela página pública (LGPD v${LGPD_CONSENT_VERSION})`,
     },
   });
 
@@ -369,6 +390,19 @@ export async function capturePublicLead(data: {
         link: `/leads/${lead.id}`,
       },
     });
+
+    if (isEmailConfigured()) {
+      const broker = await prisma.user.findUnique({
+        where: { id: brokerId },
+        select: { email: true },
+      });
+      if (broker?.email) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+        await sendLeadCaptureEmail(broker.email, lead.name, `${appUrl}/leads/${lead.id}`).catch(
+          () => undefined,
+        );
+      }
+    }
   }
 
   return { success: true };

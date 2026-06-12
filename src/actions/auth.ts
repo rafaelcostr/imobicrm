@@ -9,6 +9,7 @@ import { generateSecureToken, hashToken } from "@/lib/tokens";
 import { passwordSchema } from "@/lib/password-policy";
 import { loginSchema } from "@/lib/validations/schemas";
 import { assertRateLimit } from "@/lib/server-rate-limit";
+import { isEmailConfigured, sendPasswordResetEmail } from "@/lib/email";
 
 const resetRequestSchema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -80,8 +81,13 @@ export async function requestPasswordResetAction(formData: FormData) {
       },
     });
 
-    if (process.env.NODE_ENV === "development") {
-      console.info(`[ImobiCRM] Link de recuperação: /redefinir-senha?token=${token}`);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const resetUrl = `${appUrl}/redefinir-senha?token=${token}`;
+
+    if (isEmailConfigured()) {
+      await sendPasswordResetEmail(user.email, resetUrl);
+    } else if (process.env.NODE_ENV === "development") {
+      console.info(`[ImobiCRM] Link de recuperação: ${resetUrl}`);
     }
   }
 

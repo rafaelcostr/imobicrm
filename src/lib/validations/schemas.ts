@@ -57,6 +57,7 @@ export const propertySchema = z.object({
   state: z.string().length(2),
   zipCode: z.string().max(10).optional(),
   status: z.nativeEnum(PropertyStatus).optional(),
+  isPublished: z.boolean().optional(),
 });
 
 export const taskSchema = z.object({
@@ -94,6 +95,7 @@ export const publicLeadSchema = z.object({
   phone: z.string().min(8).max(20),
   email: z.string().email().optional().or(z.literal("")),
   interest: z.string().max(200).optional(),
+  propertyCode: z.string().max(30).optional(),
   lgpdConsent: z.literal(true, {
     message: "É necessário aceitar a política de privacidade.",
   }),

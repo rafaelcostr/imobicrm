@@ -251,6 +251,8 @@ model Property {
   state           String
   zipCode         String?
   status          PropertyStatus @default(DISPONIVEL)
+  isPublished     Boolean        @default(false)
+  publishedAt     DateTime?
   brokerId        String?
   broker          User?          @relation(fields: [brokerId], references: [id])
   createdAt       DateTime       @default(now())
