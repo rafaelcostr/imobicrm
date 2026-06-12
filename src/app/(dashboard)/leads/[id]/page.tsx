@@ -18,10 +18,10 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
   if (!lead) notFound();
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <section className="space-y-6" aria-labelledby="page-title">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">{lead.name}</h1>
+          <h1 id="page-title" className="text-2xl font-bold">{lead.name}</h1>
           <p className="text-muted-foreground">{lead.phone} · {lead.email ?? "Sem e-mail"}</p>
         </div>
         <div className="flex gap-2">
@@ -30,9 +30,9 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
           </Badge>
           <Badge variant="secondary">{LEAD_STAGE_LABELS[lead.stage]}</Badge>
         </div>
-      </div>
+      </header>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <section aria-label="Detalhes do lead" className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Dados do lead</CardTitle>
@@ -64,24 +64,26 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
             </div>
           </CardContent>
         </Card>
-      </div>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Notas</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <LeadNotesForm leadId={lead.id} />
-          {lead.leadNotes.map((note) => (
-            <div key={note.id} className="rounded-lg border border-border p-3">
-              <p className="text-sm">{note.content}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {note.user.name} · {formatDateTime(note.createdAt)}
-              </p>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
+      <section aria-label="Notas do lead">
+        <Card>
+          <CardHeader>
+            <CardTitle>Notas</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <LeadNotesForm leadId={lead.id} />
+            {lead.leadNotes.map((note) => (
+              <div key={note.id} className="rounded-lg border border-border p-3">
+                <p className="text-sm">{note.content}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {note.user.name} · {formatDateTime(note.createdAt)}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </section>
+    </section>
   );
 }

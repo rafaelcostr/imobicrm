@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { generateReport } from "@/actions/modules";
+import { generateReport } from "@/features/reports/actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Download } from "lucide-react";

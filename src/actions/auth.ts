@@ -7,12 +7,8 @@ import { z } from "zod";
 import { AuthError } from "next-auth";
 import { generateSecureToken, hashToken } from "@/lib/tokens";
 import { passwordSchema } from "@/lib/password-policy";
+import { loginSchema } from "@/lib/validations/schemas";
 import { assertRateLimit } from "@/lib/server-rate-limit";
-
-const loginSchema = z.object({
-  email: z.string().email("E-mail inválido"),
-  password: passwordSchema,
-});
 
 const resetRequestSchema = z.object({
   email: z.string().email("E-mail inválido"),

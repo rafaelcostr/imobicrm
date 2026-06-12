@@ -1,21 +1,20 @@
+import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { pageMetadata } from "@/lib/metadata";
 import { Shield, Database, Lock } from "lucide-react";
 
-export const metadata = { title: "Configurações" };
+export const metadata = pageMetadata("Configurações", "Preferências do sistema e informações de segurança.");
 
 export default function SettingsPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Configurações</h1>
-        <p className="text-muted-foreground">Preferências do sistema e informações de segurança</p>
-      </div>
+    <section className="space-y-6" aria-labelledby="page-title">
+      <PageHeader title="Configurações" description="Preferências do sistema e informações de segurança" />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <section aria-label="Informações de segurança" className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Shield className="h-5 w-5 text-primary" />
+              <Shield className="h-5 w-5 text-primary" aria-hidden="true" />
               Dados 100% seguros
             </CardTitle>
           </CardHeader>
@@ -28,7 +27,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Database className="h-5 w-5 text-primary" />
+              <Database className="h-5 w-5 text-primary" aria-hidden="true" />
               Backup automático
             </CardTitle>
           </CardHeader>
@@ -41,7 +40,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Lock className="h-5 w-5 text-primary" />
+              <Lock className="h-5 w-5 text-primary" aria-hidden="true" />
               Conformidade com a LGPD
             </CardTitle>
           </CardHeader>
@@ -51,7 +50,7 @@ export default function SettingsPage() {
             </p>
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </section>
+    </section>
   );
 }

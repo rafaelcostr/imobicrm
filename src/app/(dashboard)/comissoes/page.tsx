@@ -1,10 +1,12 @@
-import { getCommissions } from "@/actions/modules";
+import { getCommissions } from "@/features/commissions/actions";
+import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { pageMetadata } from "@/lib/metadata";
 import { COMMISSION_STATUS_LABELS } from "@/lib/labels";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
-export const metadata = { title: "Comissões" };
+export const metadata = pageMetadata("Comissões", "Controle financeiro de comissões por venda.");
 
 const statusVariant = {
   PENDENTE: "warning" as const,
@@ -23,13 +25,10 @@ export default async function CommissionsPage() {
     .reduce((s, c) => s + Number(c.amount), 0);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Comissões</h1>
-        <p className="text-muted-foreground">Controle financeiro de comissões por venda</p>
-      </div>
+    <section className="space-y-6" aria-labelledby="page-title">
+      <PageHeader title="Comissões" description="Controle financeiro de comissões por venda" />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <section aria-label="Resumo financeiro" className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader><CardTitle className="text-sm text-muted-foreground">Total pendente</CardTitle></CardHeader>
           <CardContent><p className="text-2xl font-bold">{formatCurrency(totalPending)}</p></CardContent>
@@ -38,40 +37,42 @@ export default async function CommissionsPage() {
           <CardHeader><CardTitle className="text-sm text-muted-foreground">Total pago (mês)</CardTitle></CardHeader>
           <CardContent><p className="text-2xl font-bold text-emerald-500">{formatCurrency(totalPaid)}</p></CardContent>
         </Card>
-      </div>
+      </section>
 
-      <Card>
-        <CardHeader><CardTitle>Relatório mensal</CardTitle></CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-muted-foreground">
-                <th className="pb-3 pr-4">Imóvel</th>
-                <th className="pb-3 pr-4">Corretor</th>
-                <th className="pb-3 pr-4">Valor do imóvel</th>
-                <th className="pb-3 pr-4">Percentual</th>
-                <th className="pb-3 pr-4">Comissão</th>
-                <th className="pb-3">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {commissions.map((c) => (
-                <tr key={c.id} className="border-b border-border/50">
-                  <td className="py-3 pr-4">{c.sale.property.title}</td>
-                  <td className="py-3 pr-4">{c.broker.name}</td>
-                  <td className="py-3 pr-4">{formatCurrency(Number(c.propertyValue))}</td>
-                  <td className="py-3 pr-4">{Number(c.percentage)}%</td>
-                  <td className="py-3 pr-4 font-semibold">{formatCurrency(Number(c.amount))}</td>
-                  <td className="py-3">
-                    <Badge variant={statusVariant[c.status]}>{COMMISSION_STATUS_LABELS[c.status]}</Badge>
-                    {c.paidAt && <p className="text-xs text-muted-foreground">{formatDate(c.paidAt)}</p>}
-                  </td>
+      <section aria-label="Relatório mensal">
+        <Card>
+          <CardHeader><CardTitle>Relatório mensal</CardTitle></CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-muted-foreground">
+                  <th scope="col" className="pb-3 pr-4">Imóvel</th>
+                  <th scope="col" className="pb-3 pr-4">Corretor</th>
+                  <th scope="col" className="pb-3 pr-4">Valor do imóvel</th>
+                  <th scope="col" className="pb-3 pr-4">Percentual</th>
+                  <th scope="col" className="pb-3 pr-4">Comissão</th>
+                  <th scope="col" className="pb-3">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
-    </div>
+              </thead>
+              <tbody>
+                {commissions.map((c) => (
+                  <tr key={c.id} className="border-b border-border/50">
+                    <td className="py-3 pr-4">{c.sale.property.title}</td>
+                    <td className="py-3 pr-4">{c.broker.name}</td>
+                    <td className="py-3 pr-4">{formatCurrency(Number(c.propertyValue))}</td>
+                    <td className="py-3 pr-4">{Number(c.percentage)}%</td>
+                    <td className="py-3 pr-4 font-semibold">{formatCurrency(Number(c.amount))}</td>
+                    <td className="py-3">
+                      <Badge variant={statusVariant[c.status]}>{COMMISSION_STATUS_LABELS[c.status]}</Badge>
+                      {c.paidAt && <p className="text-xs text-muted-foreground">{formatDate(c.paidAt)}</p>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      </section>
+    </section>
   );
 }

@@ -7,6 +7,12 @@ import {
   PropertyStatus,
   TaskType,
 } from "@prisma/client";
+import { passwordSchema } from "@/lib/password-policy";
+
+export const loginSchema = z.object({
+  email: z.string().email("E-mail inválido"),
+  password: passwordSchema,
+});
 
 export const leadSchema = z.object({
   name: z.string().min(2, "Nome obrigatório").max(120),

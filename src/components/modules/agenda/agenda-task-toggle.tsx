@@ -1,6 +1,6 @@
 "use client";
 
-import { toggleTaskComplete } from "@/actions/modules";
+import { toggleTaskComplete } from "@/features/agenda/actions";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";

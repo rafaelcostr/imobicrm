@@ -28,11 +28,11 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
     .join(", ");
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <article className="space-y-6" aria-labelledby="page-title">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm text-muted-foreground">{property.code}</p>
-          <h1 className="text-2xl font-bold">{property.title}</h1>
+          <h1 id="page-title" className="text-2xl font-bold">{property.title}</h1>
           <p className="text-2xl font-bold text-primary">{formatCurrency(Number(property.price))}</p>
         </div>
         <div className="flex gap-2">
@@ -45,19 +45,20 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
             Compartilhar
           </Button>
         </div>
-      </div>
+      </header>
 
-      <div className="grid h-64 place-items-center rounded-xl bg-muted">
+      <section aria-label="Galeria de fotos" className="grid h-64 place-items-center rounded-xl bg-muted">
         <p className="text-muted-foreground">Galeria de fotos ({property.media.length} mídias)</p>
-      </div>
+      </section>
 
-      <div className="flex flex-wrap gap-4">
-        <Badge variant="secondary">{PROPERTY_TYPE_LABELS[property.type]}</Badge>
-        <Badge variant="secondary">{PROPERTY_PURPOSE_LABELS[property.purpose]}</Badge>
-        <Badge>{PROPERTY_STATUS_LABELS[property.status]}</Badge>
-      </div>
+      <section aria-label="Características">
+        <div className="flex flex-wrap gap-4">
+          <Badge variant="secondary">{PROPERTY_TYPE_LABELS[property.type]}</Badge>
+          <Badge variant="secondary">{PROPERTY_PURPOSE_LABELS[property.purpose]}</Badge>
+          <Badge>{PROPERTY_STATUS_LABELS[property.status]}</Badge>
+        </div>
 
-      <div className="flex flex-wrap gap-6 text-sm">
+        <div className="mt-4 flex flex-wrap gap-6 text-sm">
         <span className="flex items-center gap-2"><Bed className="h-4 w-4" /> {property.bedrooms} quartos</span>
         <span className="flex items-center gap-2"><Bath className="h-4 w-4" /> {property.bathrooms} banheiros</span>
         <span className="flex items-center gap-2"><Car className="h-4 w-4" /> {property.garages} vagas</span>
@@ -65,9 +66,10 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
           <Maximize className="h-4 w-4" />{" "}
           {property.builtArea ? Number(property.builtArea) : property.totalArea ? Number(property.totalArea) : "—"} m²
         </span>
-      </div>
+        </div>
+      </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <section aria-label="Descrição e endereço" className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader><CardTitle>Descrição</CardTitle></CardHeader>
           <CardContent>
@@ -83,7 +85,7 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
             <p><span className="text-muted-foreground">Corretor:</span> {property.broker?.name ?? "—"}</p>
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </section>
+    </article>
   );
 }

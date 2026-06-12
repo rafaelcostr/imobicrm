@@ -1,9 +1,11 @@
 import { getDashboardStats } from "@/actions/dashboard";
 import { KpiCard } from "@/components/modules/dashboard/kpi-card";
 import { SalesChart, SourceChart, ConversionFunnel, BrokerRankingChart } from "@/components/modules/dashboard/charts";
+import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { pageMetadata } from "@/lib/metadata";
 import { LEAD_SOURCE_LABELS, LEAD_TEMPERATURE_LABELS, TASK_TYPE_LABELS } from "@/lib/labels";
 import {
   Users,
@@ -16,42 +18,45 @@ import {
   Percent,
 } from "lucide-react";
 
-export const metadata = {
-  title: "Dashboard",
-};
+export const metadata = pageMetadata(
+  "Dashboard",
+  "Visão geral do desempenho da sua operação imobiliária.",
+);
 
 export default async function DashboardPage() {
   const stats = await getDashboardStats();
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Visão geral do desempenho da sua operação imobiliária</p>
-      </div>
+    <section className="space-y-6" aria-labelledby="page-title">
+      <PageHeader
+        title="Dashboard"
+        description="Visão geral do desempenho da sua operação imobiliária"
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
-        <KpiCard title="Total de Leads" value={stats.kpis.totalLeads} trend={stats.kpis.leadTrend} icon={Users} />
-        <KpiCard title="Total de Imóveis" value={stats.kpis.totalProperties} icon={Building2} />
-        <KpiCard title="Visitas Agendadas" value={stats.kpis.scheduledVisits} trend={8} icon={CalendarCheck} />
-        <KpiCard title="Propostas Enviadas" value={stats.kpis.proposalsSent} trend={5} icon={FileText} />
-        <KpiCard title="Vendas Fechadas" value={stats.kpis.closedSales} trend={28} icon={TrendingUp} />
-        <KpiCard title="Comissão Prevista" value={stats.kpis.commissionPending} icon={Wallet} />
-        <KpiCard title="Comissão Recebida" value={stats.kpis.commissionPaid} icon={DollarSign} />
-        <KpiCard title="Taxa de Conversão" value={stats.kpis.conversionRate} trend={4} icon={Percent} />
-      </div>
+      <section aria-label="Indicadores principais">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
+          <KpiCard title="Total de Leads" value={stats.kpis.totalLeads} trend={stats.kpis.leadTrend} icon={Users} />
+          <KpiCard title="Total de Imóveis" value={stats.kpis.totalProperties} icon={Building2} />
+          <KpiCard title="Visitas Agendadas" value={stats.kpis.scheduledVisits} trend={8} icon={CalendarCheck} />
+          <KpiCard title="Propostas Enviadas" value={stats.kpis.proposalsSent} trend={5} icon={FileText} />
+          <KpiCard title="Vendas Fechadas" value={stats.kpis.closedSales} trend={28} icon={TrendingUp} />
+          <KpiCard title="Comissão Prevista" value={stats.kpis.commissionPending} icon={Wallet} />
+          <KpiCard title="Comissão Recebida" value={stats.kpis.commissionPaid} icon={DollarSign} />
+          <KpiCard title="Taxa de Conversão" value={stats.kpis.conversionRate} trend={4} icon={Percent} />
+        </div>
+      </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <section aria-label="Gráficos de desempenho" className="grid gap-4 lg:grid-cols-2">
         <SalesChart data={stats.salesByMonth} />
         <SourceChart data={stats.sourceChart} />
-      </div>
+      </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <section aria-label="Funil e ranking" className="grid gap-4 lg:grid-cols-2">
         <ConversionFunnel data={stats.funnelData} />
         <BrokerRankingChart data={stats.brokerRanking} />
-      </div>
+      </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <section aria-label="Atividade recente" className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Leads recentes</CardTitle>
@@ -101,31 +106,33 @@ export default async function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Imóveis em destaque</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {stats.featuredProperties.map((property) => (
-              <div key={property.id} className="overflow-hidden rounded-lg border border-border">
-                <div className="flex h-32 items-center justify-center bg-muted">
-                  <Building2 className="h-10 w-10 text-muted-foreground" />
+      <section aria-label="Imóveis em destaque">
+        <Card>
+          <CardHeader>
+            <CardTitle>Imóveis em destaque</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {stats.featuredProperties.map((property) => (
+                <div key={property.id} className="overflow-hidden rounded-lg border border-border">
+                  <div className="flex h-32 items-center justify-center bg-muted">
+                    <Building2 className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
+                  </div>
+                  <div className="p-3">
+                    <p className="font-medium line-clamp-1">{property.title}</p>
+                    <p className="text-sm font-semibold text-primary">{formatCurrency(Number(property.price))}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {property.bedrooms} quartos · {property.bathrooms} banheiros · {property.garages} vagas
+                    </p>
+                  </div>
                 </div>
-                <div className="p-3">
-                  <p className="font-medium line-clamp-1">{property.title}</p>
-                  <p className="text-sm font-semibold text-primary">{formatCurrency(Number(property.price))}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {property.bedrooms} quartos · {property.bathrooms} banheiros · {property.garages} vagas
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+    </section>
   );
 }

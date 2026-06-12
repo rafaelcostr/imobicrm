@@ -3,16 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  Users,
-  Kanban,
-  Building2,
-  UserCircle,
-  Wallet,
-  Calendar,
-  MessageCircle,
-  BarChart3,
-  Settings,
   ChevronLeft,
   ChevronRight,
   Home,
@@ -20,20 +10,8 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { Role } from "@prisma/client";
-import { hasPermission, type Permission } from "@/lib/permissions";
-
-const navItems: { href: string; label: string; icon: React.ElementType; permission: Permission }[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard:view" },
-  { href: "/leads", label: "Leads", icon: Users, permission: "leads:view" },
-  { href: "/funil", label: "Funil de Vendas", icon: Kanban, permission: "funnel:view" },
-  { href: "/imoveis", label: "Imóveis", icon: Building2, permission: "properties:view" },
-  { href: "/corretor", label: "Área do Corretor", icon: UserCircle, permission: "brokers:view" },
-  { href: "/comissoes", label: "Comissões", icon: Wallet, permission: "commissions:view" },
-  { href: "/agenda", label: "Agenda", icon: Calendar, permission: "agenda:view" },
-  { href: "/whatsapp", label: "WhatsApp", icon: MessageCircle, permission: "whatsapp:view" },
-  { href: "/relatorios", label: "Relatórios", icon: BarChart3, permission: "reports:view" },
-  { href: "/configuracoes", label: "Configurações", icon: Settings, permission: "settings:view" },
-];
+import { hasPermission } from "@/lib/permissions";
+import { sidebarNavItems } from "@/lib/navigation";
 
 interface SidebarProps {
   role: Role;
@@ -43,7 +21,7 @@ interface SidebarProps {
 
 export function Sidebar({ role, collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
-  const filtered = navItems.filter((item) => hasPermission(role, item.permission));
+  const filtered = sidebarNavItems.filter((item) => hasPermission(role, item.permission));
 
   return (
     <aside

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { sendWhatsAppMessage } from "@/actions/modules";
+import { sendWhatsAppMessage } from "@/features/whatsapp/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

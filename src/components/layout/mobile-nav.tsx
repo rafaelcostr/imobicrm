@@ -2,20 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Plus, Building2, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { hasPermission, type Permission } from "@/lib/permissions";
+import { hasPermission } from "@/lib/permissions";
 import type { Role } from "@prisma/client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/layout/sidebar";
-
-const mobileNav: { href: string; label: string; icon: React.ElementType; permission: Permission }[] = [
-  { href: "/dashboard", label: "Início", icon: LayoutDashboard, permission: "dashboard:view" },
-  { href: "/leads", label: "Leads", icon: Users, permission: "leads:view" },
-  { href: "/leads/novo", label: "Novo", icon: Plus, permission: "leads:create" },
-  { href: "/imoveis", label: "Imóveis", icon: Building2, permission: "properties:view" },
-];
+import { mobileNavItems } from "@/lib/navigation";
 
 interface MobileNavProps {
   role: Role;
@@ -25,7 +19,7 @@ interface MobileNavProps {
 export function MobileNav({ role, userName }: MobileNavProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const items = mobileNav.filter((i) => hasPermission(role, i.permission));
+  const items = mobileNavItems.filter((i) => hasPermission(role, i.permission));
 
   return (
     <>

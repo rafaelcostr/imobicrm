@@ -1,24 +1,27 @@
-import { getWhatsAppData } from "@/actions/modules";
+import { getWhatsAppData } from "@/features/whatsapp/actions";
+import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { pageMetadata } from "@/lib/metadata";
 import { MessageCircle } from "lucide-react";
 import { WhatsAppChat } from "@/components/modules/whatsapp/whatsapp-chat";
 
-export const metadata = { title: "WhatsApp" };
+export const metadata = pageMetadata(
+  "WhatsApp",
+  "Estrutura preparada para integração com a API do WhatsApp Business.",
+);
 
 export default async function WhatsAppPage() {
   const { leads, templates, messages } = await getWhatsAppData();
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">WhatsApp</h1>
-        <p className="text-muted-foreground">
-          Estrutura preparada para integração futura com a API do WhatsApp Business
-        </p>
-      </div>
+    <section className="space-y-6" aria-labelledby="page-title">
+      <PageHeader
+        title="WhatsApp"
+        description="Estrutura preparada para integração futura com a API do WhatsApp Business"
+      />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <section aria-label="Conversas" className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardHeader><CardTitle>Leads</CardTitle></CardHeader>
           <CardContent className="space-y-2">
@@ -33,6 +36,7 @@ export default async function WhatsAppPage() {
                     href={`https://wa.me/55${(lead.whatsapp ?? lead.phone).replace(/\D/g, "")}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    aria-label={`Abrir WhatsApp de ${lead.name}`}
                   >
                     <MessageCircle className="h-4 w-4" />
                   </a>
@@ -48,19 +52,21 @@ export default async function WhatsAppPage() {
             <WhatsAppChat leads={leads} templates={templates} messages={messages} />
           </CardContent>
         </Card>
-      </div>
+      </section>
 
-      <Card>
-        <CardHeader><CardTitle>Templates de mensagem</CardTitle></CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          {templates.map((t) => (
-            <div key={t.id} className="rounded-lg border border-border p-4">
-              <p className="font-medium">{t.name}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t.content}</p>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
+      <section aria-label="Templates de mensagem">
+        <Card>
+          <CardHeader><CardTitle>Templates de mensagem</CardTitle></CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            {templates.map((t) => (
+              <div key={t.id} className="rounded-lg border border-border p-4">
+                <p className="font-medium">{t.name}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t.content}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </section>
+    </section>
   );
 }
