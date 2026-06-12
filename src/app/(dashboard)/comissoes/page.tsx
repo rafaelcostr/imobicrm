@@ -1,5 +1,6 @@
-import { getCommissions } from "@/features/commissions/actions";
+import { getCommissions, getCommissionSummary } from "@/features/commissions/actions";
 import { PageHeader } from "@/components/layout/page-header";
+import { Pagination } from "@/components/layout/pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { pageMetadata } from "@/lib/metadata";
@@ -14,15 +15,16 @@ const statusVariant = {
   PAGO: "success" as const,
 };
 
-export default async function CommissionsPage() {
-  const commissions = await getCommissions();
-
-  const totalPending = commissions
-    .filter((c) => c.status !== "PAGO")
-    .reduce((s, c) => s + Number(c.amount), 0);
-  const totalPaid = commissions
-    .filter((c) => c.status === "PAGO")
-    .reduce((s, c) => s + Number(c.amount), 0);
+export default async function CommissionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page } = await searchParams;
+  const [result, summary] = await Promise.all([
+    getCommissions({ page }),
+    getCommissionSummary(),
+  ]);
 
   return (
     <section className="space-y-6" aria-labelledby="page-title">
@@ -31,11 +33,11 @@ export default async function CommissionsPage() {
       <section aria-label="Resumo financeiro" className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader><CardTitle className="text-sm text-muted-foreground">Total pendente</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold">{formatCurrency(totalPending)}</p></CardContent>
+          <CardContent><p className="text-2xl font-bold">{formatCurrency(summary.totalPending)}</p></CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm text-muted-foreground">Total pago (mês)</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold text-emerald-500">{formatCurrency(totalPaid)}</p></CardContent>
+          <CardContent><p className="text-2xl font-bold text-emerald-500">{formatCurrency(summary.totalPaid)}</p></CardContent>
         </Card>
       </section>
 
@@ -56,7 +58,7 @@ export default async function CommissionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {commissions.map((c) => (
+                {result.items.map((c) => (
                   <tr key={c.id} className="border-b border-border/50">
                     <td className="py-3 pr-4">{c.sale.property.title}</td>
                     <td className="py-3 pr-4">{c.broker.name}</td>
@@ -71,6 +73,15 @@ export default async function CommissionsPage() {
                 ))}
               </tbody>
             </table>
+            {result.items.length === 0 && (
+              <p className="py-8 text-center text-muted-foreground">Nenhuma comissão neste período</p>
+            )}
+            <Pagination
+              page={result.page}
+              totalPages={result.totalPages}
+              total={result.total}
+              basePath="/comissoes"
+            />
           </CardContent>
         </Card>
       </section>

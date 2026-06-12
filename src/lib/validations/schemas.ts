@@ -68,6 +68,27 @@ export const taskSchema = z.object({
   leadId: z.string().optional(),
 });
 
+export const visitSchema = z.object({
+  leadId: z.string().min(1),
+  propertyId: z.string().min(1),
+  scheduledAt: z.coerce.date(),
+  notes: z.string().max(1000).optional(),
+});
+
+export const proposalSchema = z.object({
+  leadId: z.string().min(1),
+  propertyId: z.string().min(1),
+  amount: z.coerce.number().positive(),
+  notes: z.string().max(1000).optional(),
+});
+
+export const saleSchema = z.object({
+  leadId: z.string().optional(),
+  propertyId: z.string().min(1),
+  amount: z.coerce.number().positive(),
+  commissionPercentage: z.coerce.number().min(0).max(100).default(3),
+});
+
 export const publicLeadSchema = z.object({
   name: z.string().min(2).max(120),
   phone: z.string().min(8).max(20),

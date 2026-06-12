@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getProperties } from "@/actions/properties";
 import { PageHeader } from "@/components/layout/page-header";
+import { Pagination } from "@/components/layout/pagination";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,8 +12,13 @@ import { Building2, Plus } from "lucide-react";
 
 export const metadata = pageMetadata("Imóveis", "Cadastre e gerencie seu portfólio de imóveis.");
 
-export default async function PropertiesPage() {
-  const properties = await getProperties();
+export default async function PropertiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page } = await searchParams;
+  const result = await getProperties({ page });
 
   return (
     <section className="space-y-6" aria-labelledby="page-title">
@@ -30,7 +36,7 @@ export default async function PropertiesPage() {
       />
 
       <section aria-label="Portfólio de imóveis" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {properties.map((property) => (
+        {result.items.map((property) => (
           <Link key={property.id} href={`/imoveis/${property.id}`}>
             <Card className="overflow-hidden transition-shadow hover:shadow-md">
               <div className="flex h-40 items-center justify-center bg-muted">
@@ -56,9 +62,15 @@ export default async function PropertiesPage() {
           </Link>
         ))}
       </section>
-      {properties.length === 0 && (
+      {result.items.length === 0 && (
         <p className="text-center text-muted-foreground">Nenhum imóvel cadastrado</p>
       )}
+      <Pagination
+        page={result.page}
+        totalPages={result.totalPages}
+        total={result.total}
+        basePath="/imoveis"
+      />
     </section>
   );
 }

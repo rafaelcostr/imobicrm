@@ -11,31 +11,69 @@ import { requireAuth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
 import { sanitizeString } from "@/lib/utils";
 import { propertySchema } from "@/lib/validations/schemas";
+import { buildPaginatedResult, parsePagination } from "@/lib/pagination";
 import type { z } from "zod";
 
-export async function getProperties(filters?: { search?: string; status?: PropertyStatus }) {
+function buildPropertyWhere(
+  user: { id: string; role: Role },
+  filters?: { search?: string; status?: PropertyStatus },
+) {
+  return {
+    ...(user.role === "CORRETOR" ? { brokerId: user.id } : {}),
+    ...(filters?.status ? { status: filters.status } : {}),
+    ...(filters?.search
+      ? {
+          OR: [
+            { title: { contains: filters.search, mode: "insensitive" as const } },
+            { code: { contains: filters.search, mode: "insensitive" as const } },
+            { city: { contains: filters.search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
+}
+
+export async function getProperties(filters?: {
+  search?: string;
+  status?: PropertyStatus;
+  page?: string;
+  pageSize?: string;
+}) {
+  const user = await requireAuth();
+  requirePermission(user.role as Role, "properties:view");
+
+  const { page, pageSize, skip } = parsePagination(filters);
+  const where = buildPropertyWhere(user, filters);
+
+  const [items, total] = await Promise.all([
+    prisma.property.findMany({
+      where,
+      include: {
+        media: { where: { type: "IMAGE" }, take: 1 },
+        broker: { select: { name: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      skip,
+      take: pageSize,
+    }),
+    prisma.property.count({ where }),
+  ]);
+
+  return buildPaginatedResult(items, total, page, pageSize);
+}
+
+export async function getPropertyOptions(availableOnly = true) {
   const user = await requireAuth();
   requirePermission(user.role as Role, "properties:view");
 
   return prisma.property.findMany({
     where: {
       ...(user.role === "CORRETOR" ? { brokerId: user.id } : {}),
-      ...(filters?.status ? { status: filters.status } : {}),
-      ...(filters?.search
-        ? {
-            OR: [
-              { title: { contains: filters.search, mode: "insensitive" } },
-              { code: { contains: filters.search, mode: "insensitive" } },
-              { city: { contains: filters.search, mode: "insensitive" } },
-            ],
-          }
-        : {}),
+      ...(availableOnly ? { status: "DISPONIVEL" } : {}),
     },
-    include: {
-      media: { where: { type: "IMAGE" }, take: 1 },
-      broker: { select: { name: true } },
-    },
-    orderBy: { updatedAt: "desc" },
+    select: { id: true, title: true, code: true, price: true, city: true },
+    orderBy: { title: "asc" },
+    take: 200,
   });
 }
 

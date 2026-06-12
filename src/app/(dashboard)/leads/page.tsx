@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getLeads } from "@/actions/leads";
 import { PageHeader } from "@/components/layout/page-header";
+import { Pagination } from "@/components/layout/pagination";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -15,10 +16,10 @@ export const metadata = pageMetadata("Leads", "Cadastre, filtre e acompanhe todo
 export default async function LeadsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q } = await searchParams;
-  const leads = await getLeads({ search: q });
+  const { q, page } = await searchParams;
+  const result = await getLeads({ search: q, page });
 
   return (
     <section className="space-y-6" aria-labelledby="page-title">
@@ -61,7 +62,7 @@ export default async function LeadsPage({
                 </tr>
               </thead>
               <tbody>
-                {leads.map((lead) => (
+                {result.items.map((lead) => (
                   <tr key={lead.id} className="border-b border-border/50 hover:bg-muted/50">
                     <td className="py-3 pr-4">
                       <Link href={`/leads/${lead.id}`} className="font-medium hover:text-primary">
@@ -81,9 +82,16 @@ export default async function LeadsPage({
                 ))}
               </tbody>
             </table>
-            {leads.length === 0 && (
+            {result.items.length === 0 && (
               <p className="py-8 text-center text-muted-foreground">Nenhum lead encontrado</p>
             )}
+            <Pagination
+              page={result.page}
+              totalPages={result.totalPages}
+              total={result.total}
+              basePath="/leads"
+              params={{ q }}
+            />
           </CardContent>
         </Card>
       </section>

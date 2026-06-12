@@ -10,6 +10,7 @@ import {
   BarChart3,
   Settings,
   Plus,
+  Handshake,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
@@ -26,6 +27,7 @@ export const sidebarNavItems: NavItem[] = [
   { href: "/leads", label: "Leads", icon: Users, permission: "leads:view" },
   { href: "/funil", label: "Funil de Vendas", icon: Kanban, permission: "funnel:view" },
   { href: "/imoveis", label: "Imóveis", icon: Building2, permission: "properties:view" },
+  { href: "/negocios", label: "Negociações", icon: Handshake, permission: "leads:view" },
   { href: "/corretor", label: "Área do Corretor", icon: UserCircle, permission: "brokers:view" },
   { href: "/comissoes", label: "Comissões", icon: Wallet, permission: "commissions:view" },
   { href: "/agenda", label: "Agenda", icon: Calendar, permission: "agenda:view" },

@@ -8,40 +8,75 @@ import { requirePermission } from "@/lib/permissions";
 import { sanitizeString } from "@/lib/utils";
 import { leadSchema, leadUpdateSchema, publicLeadSchema } from "@/lib/validations/schemas";
 import { assertRateLimit } from "@/lib/server-rate-limit";
+import { buildPaginatedResult, parsePagination } from "@/lib/pagination";
 import type { z } from "zod";
+
+function buildLeadWhere(
+  user: { id: string; role: Role },
+  filters?: {
+    search?: string;
+    source?: LeadSource;
+    stage?: LeadStage;
+    temperature?: LeadTemperature;
+  },
+) {
+  return {
+    ...(user.role === "CORRETOR" ? { brokerId: user.id } : {}),
+    ...(filters?.source ? { source: filters.source } : {}),
+    ...(filters?.stage ? { stage: filters.stage } : {}),
+    ...(filters?.temperature ? { temperature: filters.temperature } : {}),
+    ...(filters?.search
+      ? {
+          OR: [
+            { name: { contains: filters.search, mode: "insensitive" as const } },
+            { email: { contains: filters.search, mode: "insensitive" as const } },
+            { phone: { contains: filters.search } },
+          ],
+        }
+      : {}),
+  };
+}
 
 export async function getLeads(filters?: {
   search?: string;
   source?: LeadSource;
   stage?: LeadStage;
   temperature?: LeadTemperature;
+  page?: string;
+  pageSize?: string;
 }) {
   const user = await requireAuth();
   requirePermission(user.role as Role, "leads:view");
 
-  const isBroker = user.role === "CORRETOR";
+  const { page, pageSize, skip } = parsePagination(filters);
+  const where = buildLeadWhere(user, filters);
+
+  const [items, total] = await Promise.all([
+    prisma.lead.findMany({
+      where,
+      include: {
+        broker: { select: { name: true } },
+        _count: { select: { leadNotes: true, attachments: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      skip,
+      take: pageSize,
+    }),
+    prisma.lead.count({ where }),
+  ]);
+
+  return buildPaginatedResult(items, total, page, pageSize);
+}
+
+export async function getLeadOptions() {
+  const user = await requireAuth();
+  requirePermission(user.role as Role, "leads:view");
 
   return prisma.lead.findMany({
-    where: {
-      ...(isBroker ? { brokerId: user.id } : {}),
-      ...(filters?.source ? { source: filters.source } : {}),
-      ...(filters?.stage ? { stage: filters.stage } : {}),
-      ...(filters?.temperature ? { temperature: filters.temperature } : {}),
-      ...(filters?.search
-        ? {
-            OR: [
-              { name: { contains: filters.search, mode: "insensitive" } },
-              { email: { contains: filters.search, mode: "insensitive" } },
-              { phone: { contains: filters.search } },
-            ],
-          }
-        : {}),
-    },
-    include: {
-      broker: { select: { name: true } },
-      _count: { select: { leadNotes: true, attachments: true } },
-    },
-    orderBy: { updatedAt: "desc" },
+    where: user.role === "CORRETOR" ? { brokerId: user.id } : {},
+    select: { id: true, name: true, phone: true },
+    orderBy: { name: "asc" },
+    take: 200,
   });
 }
 
