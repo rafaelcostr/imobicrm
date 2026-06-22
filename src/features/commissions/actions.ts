@@ -5,7 +5,7 @@ import { CommissionStatus, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
-import { getBrokerScope } from "@/lib/broker-scope";
+import { getCommissionScope } from "@/lib/broker-scope";
 import { buildPaginatedResult, parsePagination } from "@/lib/pagination";
 
 export async function getCommissionSummary(filters?: { month?: number; year?: number }) {
@@ -17,15 +17,23 @@ export async function getCommissionSummary(filters?: { month?: number; year?: nu
   const year = filters?.year ?? now.getFullYear();
   const start = new Date(year, month, 1);
   const end = new Date(year, month + 1, 0, 23, 59, 59);
-  const scope = getBrokerScope(user);
+  const base = getCommissionScope(user);
 
   const [pending, paid] = await Promise.all([
     prisma.commission.aggregate({
-      where: { ...scope, status: { in: ["PENDENTE", "EM_PROCESSAMENTO"] }, createdAt: { gte: start, lte: end } },
+      where: {
+        ...base,
+        status: { in: ["PENDENTE", "EM_PROCESSAMENTO"] },
+        createdAt: { gte: start, lte: end },
+      },
       _sum: { amount: true },
     }),
     prisma.commission.aggregate({
-      where: { ...scope, status: "PAGO", paidAt: { gte: start, lte: end } },
+      where: {
+        ...base,
+        status: "PAGO",
+        paidAt: { gte: start, lte: end },
+      },
       _sum: { amount: true },
     }),
   ]);
@@ -54,7 +62,7 @@ export async function getCommissions(filters?: {
   const { page, pageSize, skip } = parsePagination(filters);
 
   const where = {
-    ...getBrokerScope(user),
+    ...getCommissionScope(user),
     ...(filters?.status ? { status: filters.status } : {}),
     createdAt: { gte: start, lte: end },
   };

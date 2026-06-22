@@ -72,6 +72,20 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
   RETORNO: "Retorno",
 };
 
+export const WHATSAPP_STATUS_LABELS: Record<string, string> = {
+  SENT: "Enviada",
+  DELIVERED: "Entregue",
+  READ: "Lida",
+  FAILED: "Falhou",
+  RECEIVED: "Recebida",
+};
+
+export const EMAIL_STATUS_LABELS: Record<string, string> = {
+  SENT: "Enviado",
+  FAILED: "Falhou",
+  DRAFT: "Rascunho (manual)",
+};
+
 export const FUNNEL_STAGES: LeadStage[] = [
   "NOVO_LEAD",
   "PRIMEIRO_CONTATO",

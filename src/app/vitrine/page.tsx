@@ -3,6 +3,12 @@ import { getPublicProperties, getPublicPropertyFilterOptions } from "@/features/
 import { VitrinePropertyCard } from "@/features/vitrine/components/vitrine-property-card";
 import { VitrineFilters } from "@/features/vitrine/components/vitrine-filters";
 import { Pagination } from "@/components/layout/pagination";
+import { JsonLd } from "@/components/seo/json-ld";
+import {
+  buildItemListJsonLd,
+  buildWebSiteJsonLd,
+} from "@/lib/seo/json-ld-builders";
+import { getPublicSeoContext } from "@/lib/seo/public-context";
 import type { PropertyPurpose, PropertyType } from "@prisma/client";
 
 export default async function VitrinePage({
@@ -17,61 +23,84 @@ export default async function VitrinePage({
   }>;
 }) {
   const params = await searchParams;
+  const ctx = await getPublicSeoContext();
+  const orgFilter = ctx.organizationId ? { organizationId: ctx.organizationId } : {};
+
   const [result, filterOptions] = await Promise.all([
-    getPublicProperties(params),
-    getPublicPropertyFilterOptions(),
+    getPublicProperties({ ...params, ...orgFilter }),
+    getPublicPropertyFilterOptions(ctx.organizationId ?? undefined),
   ]);
 
+  const listDescription = `${result.total} imóvel${result.total === 1 ? "" : "is"} disponíve${result.total === 1 ? "l" : "is"}`;
+
   return (
-    <section className="space-y-6" aria-labelledby="vitrine-title">
-      <header className="space-y-2">
-        <h1 id="vitrine-title" className="text-3xl font-bold">
-          Imóveis disponíveis
-        </h1>
-        <p className="text-muted-foreground">
-          Encontre o imóvel ideal para comprar ou alugar.
-        </p>
-      </header>
+    <>
+      <JsonLd
+        data={[
+          buildWebSiteJsonLd(ctx.siteName, ctx.tagline),
+          buildItemListJsonLd(result.items, `Imóveis — ${ctx.siteName}`),
+        ]}
+      />
 
-      <Suspense fallback={null}>
-        <VitrineFilters
-          cities={filterOptions.cities}
-          types={filterOptions.types}
-          purposes={filterOptions.purposes}
-          current={{
-            search: params.search,
-            city: params.city,
-            type: params.type,
-            purpose: params.purpose,
-          }}
-        />
-      </Suspense>
+      <section className="space-y-6" aria-labelledby="vitrine-title">
+        <header className="space-y-2">
+          <h1 id="vitrine-title" className="text-3xl font-bold">
+            Imóveis disponíveis
+          </h1>
+          <p className="text-muted-foreground">
+            {ctx.tagline} Encontre o imóvel ideal para comprar ou alugar em{" "}
+            <strong>{ctx.siteName}</strong>.
+          </p>
+        </header>
 
-      {result.items.length > 0 ? (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {result.items.map((property) => (
-              <VitrinePropertyCard key={property.id} property={property} />
-            ))}
-          </div>
-          <Pagination
-            page={result.page}
-            totalPages={result.totalPages}
-            total={result.total}
-            basePath="/vitrine"
-            params={{
+        <Suspense fallback={null}>
+          <VitrineFilters
+            cities={filterOptions.cities}
+            types={filterOptions.types}
+            purposes={filterOptions.purposes}
+            current={{
               search: params.search,
               city: params.city,
               type: params.type,
               purpose: params.purpose,
             }}
           />
-        </>
-      ) : (
-        <p className="py-12 text-center text-muted-foreground">
-          Nenhum imóvel publicado no momento. Volte em breve!
-        </p>
-      )}
-    </section>
+        </Suspense>
+
+        {result.items.length > 0 ? (
+          <>
+            <section aria-label="Resultados da busca">
+              <p className="sr-only">{listDescription}</p>
+              <ul
+                role="list"
+                className="grid list-none gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3"
+              >
+                {result.items.map((property) => (
+                  <li key={property.id}>
+                    <VitrinePropertyCard property={property} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <Pagination
+              page={result.page}
+              totalPages={result.totalPages}
+              total={result.total}
+              basePath="/vitrine"
+              params={{
+                search: params.search,
+                city: params.city,
+                type: params.type,
+                purpose: params.purpose,
+              }}
+            />
+          </>
+        ) : (
+          <p className="py-12 text-center text-muted-foreground" role="status">
+            Nenhum imóvel publicado no momento. Volte em breve!
+          </p>
+        )}
+      </section>
+    </>
   );
 }

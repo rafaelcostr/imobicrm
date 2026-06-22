@@ -9,22 +9,35 @@ import { sanitizeString } from "@/lib/utils";
 import { leadSchema, leadUpdateSchema, publicLeadSchema } from "@/lib/validations/schemas";
 import { assertRateLimit } from "@/lib/server-rate-limit";
 import { buildPaginatedResult, parsePagination } from "@/lib/pagination";
-import { assignBrokerRoundRobin } from "@/lib/lead-assignment";
+import { getDataScope } from "@/lib/broker-scope";
+import { requireOrganizationId, assertOrganizationLimit } from "@/lib/organization";
+import { getPublicOrganizationId, getDefaultOrganizationId } from "@/lib/tenant-context";
+import { assignBroker } from "@/lib/lead-assignment";
+import { ingestInboundLead } from "@/lib/lead-ingestion";
+import { runAutomations } from "@/lib/automation/engine";
 import { LGPD_CONSENT_VERSION } from "@/lib/lgpd";
-import { isEmailConfigured, sendLeadCaptureEmail } from "@/lib/email";
+import { deleteFileByUrl, isUploadAvailable, uploadFile } from "@/lib/storage";
 import type { z } from "zod";
 
+function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, "");
+}
+
 function buildLeadWhere(
-  user: { id: string; role: Role },
+  user: { id: string; role: Role; organizationId?: string | null },
   filters?: {
     search?: string;
     source?: LeadSource;
     stage?: LeadStage;
     temperature?: LeadTemperature;
+    brokerId?: string;
   },
 ) {
   return {
-    ...(user.role === "CORRETOR" ? { brokerId: user.id } : {}),
+    ...getDataScope(user),
+    ...(filters?.brokerId && user.role !== "CORRETOR"
+      ? { brokerId: filters.brokerId }
+      : {}),
     ...(filters?.source ? { source: filters.source } : {}),
     ...(filters?.stage ? { stage: filters.stage } : {}),
     ...(filters?.temperature ? { temperature: filters.temperature } : {}),
@@ -45,6 +58,7 @@ export async function getLeads(filters?: {
   source?: LeadSource;
   stage?: LeadStage;
   temperature?: LeadTemperature;
+  brokerId?: string;
   page?: string;
   pageSize?: string;
 }) {
@@ -76,7 +90,7 @@ export async function getLeadOptions() {
   requirePermission(user.role as Role, "leads:view");
 
   return prisma.lead.findMany({
-    where: user.role === "CORRETOR" ? { brokerId: user.id } : {},
+    where: getDataScope(user),
     select: { id: true, name: true, phone: true },
     orderBy: { name: "asc" },
     take: 200,
@@ -99,6 +113,13 @@ export async function getLeadById(id: string) {
   });
 
   if (!lead) return null;
+  if (
+    user.role !== "SUPER_ADMIN" &&
+    user.organizationId &&
+    lead.organizationId !== user.organizationId
+  ) {
+    throw new Error("Acesso negado");
+  }
   if (user.role === "CORRETOR" && lead.brokerId !== user.id) {
     throw new Error("Acesso negado");
   }
@@ -111,14 +132,18 @@ export async function createLead(data: z.infer<typeof leadSchema>) {
   requirePermission(user.role as Role, "leads:create");
 
   const parsed = leadSchema.parse(data);
+  const organizationId = requireOrganizationId(user);
+  await assertOrganizationLimit(organizationId, "leads");
 
   let brokerId = user.role === "CORRETOR" ? user.id : parsed.brokerId;
   if (!brokerId && user.role !== "CORRETOR") {
-    brokerId = (await assignBrokerRoundRobin()) ?? user.id;
+    brokerId =
+      (await assignBroker(organizationId, { city: parsed.city, state: parsed.state })) ?? user.id;
   }
 
   const lead = await prisma.lead.create({
     data: {
+      organizationId,
       name: sanitizeString(parsed.name, 120),
       phone: sanitizeString(parsed.phone, 20),
       whatsapp: parsed.whatsapp ? sanitizeString(parsed.whatsapp, 20) : null,
@@ -140,10 +165,17 @@ export async function createLead(data: z.infer<typeof leadSchema>) {
       userId: user.id,
       action: "LEAD_CRIADO",
       description: brokerId && !parsed.brokerId && user.role !== "CORRETOR"
-        ? "Lead cadastrado e distribuído por roleta"
+        ? "Lead cadastrado e distribuído automaticamente"
         : "Lead cadastrado no sistema",
     },
   });
+
+  await runAutomations({
+    trigger: "lead_created",
+    leadId: lead.id,
+    userId: user.id,
+    source: lead.source,
+  }).catch(() => {});
 
   revalidatePath("/leads");
   revalidatePath("/funil");
@@ -204,6 +236,17 @@ export async function updateLead(id: string, data: z.infer<typeof leadUpdateSche
     },
   });
 
+  if (stageChanged && parsed.stage) {
+    await runAutomations({
+      trigger: "stage_changed",
+      leadId: id,
+      userId: user.id,
+      fromStage: existing.stage,
+      toStage: parsed.stage,
+      source: lead.source,
+    }).catch(() => {});
+  }
+
   revalidatePath("/leads");
   revalidatePath("/funil");
   revalidatePath("/dashboard");
@@ -262,6 +305,15 @@ export async function moveLeadStage(leadId: string, stage: LeadStage) {
     }),
   ]);
 
+  await runAutomations({
+    trigger: "stage_changed",
+    leadId,
+    userId: user.id,
+    fromStage: lead.stage,
+    toStage: stage,
+    source: lead.source,
+  }).catch(() => {});
+
   revalidatePath("/funil");
   revalidatePath("/leads");
   revalidatePath("/dashboard");
@@ -272,7 +324,7 @@ export async function getFunnelLeads() {
   requirePermission(user.role as Role, "funnel:view");
 
   return prisma.lead.findMany({
-    where: user.role === "CORRETOR" ? { brokerId: user.id } : {},
+    where: getDataScope(user),
     include: { broker: { select: { name: true } } },
     orderBy: { updatedAt: "desc" },
   });
@@ -285,8 +337,9 @@ export async function assignLeadBroker(leadId: string, brokerId: string) {
   const lead = await getLeadById(leadId);
   if (!lead) throw new Error("Lead não encontrado");
 
+  const organizationId = requireOrganizationId(user);
   const broker = await prisma.user.findFirst({
-    where: { id: brokerId, role: "CORRETOR", isActive: true },
+    where: { id: brokerId, organizationId, role: "CORRETOR", isActive: true },
   });
   if (!broker) throw new Error("Corretor inválido");
 
@@ -335,75 +388,135 @@ export async function capturePublicLead(data: {
   await assertRateLimit("captura", 5, 60_000);
 
   const parsed = publicLeadSchema.parse(data);
-  let brokerId = await assignBrokerRoundRobin();
-  let propertyId: string | undefined;
   const consentAt = new Date();
 
-  if (parsed.propertyCode) {
-    const property = await prisma.property.findFirst({
-      where: {
-        code: { equals: parsed.propertyCode, mode: "insensitive" },
-        isPublished: true,
-        status: "DISPONIVEL",
-      },
-      select: { id: true, brokerId: true, title: true, code: true },
-    });
-    if (property) {
-      propertyId = property.id;
-      if (property.brokerId) brokerId = property.brokerId;
-    }
+  const organizationId =
+    (await getPublicOrganizationId()) ?? (await getDefaultOrganizationId());
+  if (!organizationId) {
+    throw new Error("Organização não identificada para captação");
   }
 
-  const lead = await prisma.lead.create({
+  const result = await ingestInboundLead({
+    organizationId,
+    name: parsed.name,
+    phone: parsed.phone,
+    email: parsed.email || null,
+    interest: parsed.interest,
+    propertyCode: parsed.propertyCode,
+    source: "SITE",
+    externalSource: parsed.propertyCode ? "captura" : "captura",
+    externalId: undefined,
+    lgpdConsentAt: consentAt,
+    historyAction: "CAPTACAO_PUBLICA",
+    historyDescription: parsed.propertyCode
+      ? `Lead captado pela vitrine (LGPD v${LGPD_CONSENT_VERSION})`
+      : `Lead captado pela página pública (LGPD v${LGPD_CONSENT_VERSION})`,
+    automationTrigger: "lead_captured",
+  });
+
+  return { success: true, leadId: result.leadId };
+}
+
+export async function uploadLeadAttachment(leadId: string, formData: FormData) {
+  const user = await requireAuth();
+  requirePermission(user.role as Role, "leads:edit");
+
+  if (!isUploadAvailable()) {
+    throw new Error("Upload indisponível no momento");
+  }
+
+  await getLeadById(leadId);
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("Selecione um arquivo para upload");
+  }
+
+  const uploaded = await uploadFile(file, "lead", leadId, { allowPdf: true });
+
+  const attachment = await prisma.leadAttachment.create({
     data: {
-      name: sanitizeString(parsed.name, 120),
-      phone: sanitizeString(parsed.phone, 20),
-      email: parsed.email ? parsed.email.toLowerCase() : null,
-      interest: parsed.interest ? sanitizeString(parsed.interest, 200) : null,
-      source: "SITE",
-      brokerId,
-      propertyId,
-      lgpdConsentAt: consentAt,
-      lgpdConsentVersion: LGPD_CONSENT_VERSION,
+      leadId,
+      fileName: sanitizeString(file.name, 255),
+      fileUrl: uploaded.url,
+      mimeType: uploaded.contentType,
+      size: uploaded.size,
     },
   });
 
   await prisma.leadHistory.create({
     data: {
-      leadId: lead.id,
-      action: "CAPTACAO_PUBLICA",
-      description: propertyId
-        ? `Lead captado pela vitrine — imóvel vinculado (LGPD v${LGPD_CONSENT_VERSION})`
-        : brokerId
-          ? `Lead captado pela página pública — roleta → corretor atribuído (LGPD v${LGPD_CONSENT_VERSION})`
-          : `Lead captado pela página pública (LGPD v${LGPD_CONSENT_VERSION})`,
+      leadId,
+      userId: user.id,
+      action: "ANEXO_ADICIONADO",
+      description: `Anexo adicionado: ${file.name}`,
     },
   });
 
-  if (brokerId) {
-    await prisma.notification.create({
-      data: {
-        userId: brokerId,
-        type: "LEAD",
-        title: "Novo lead captado",
-        message: `${lead.name} entrou pelo formulário público`,
-        link: `/leads/${lead.id}`,
-      },
-    });
+  revalidatePath(`/leads/${leadId}`);
+  return attachment;
+}
 
-    if (isEmailConfigured()) {
-      const broker = await prisma.user.findUnique({
-        where: { id: brokerId },
-        select: { email: true },
-      });
-      if (broker?.email) {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-        await sendLeadCaptureEmail(broker.email, lead.name, `${appUrl}/leads/${lead.id}`).catch(
-          () => undefined,
-        );
-      }
-    }
+export async function deleteLeadAttachment(attachmentId: string) {
+  const user = await requireAuth();
+  requirePermission(user.role as Role, "leads:edit");
+
+  const attachment = await prisma.leadAttachment.findUnique({
+    where: { id: attachmentId },
+  });
+  if (!attachment) throw new Error("Anexo não encontrado");
+
+  await getLeadById(attachment.leadId);
+
+  if (attachment.fileUrl.startsWith("http") || attachment.fileUrl.startsWith("/uploads/")) {
+    await deleteFileByUrl(attachment.fileUrl).catch(() => undefined);
   }
 
-  return { success: true };
+  await prisma.$transaction([
+    prisma.leadAttachment.delete({ where: { id: attachmentId } }),
+    prisma.leadHistory.create({
+      data: {
+        leadId: attachment.leadId,
+        userId: user.id,
+        action: "ANEXO_REMOVIDO",
+        description: `Anexo removido: ${attachment.fileName}`,
+      },
+    }),
+  ]);
+
+  revalidatePath(`/leads/${attachment.leadId}`);
+}
+
+export async function findLeadDuplicates(
+  params: { leadId?: string; phone?: string; email?: string },
+  limit = 5,
+) {
+  const user = await requireAuth();
+  requirePermission(user.role as Role, "leads:view");
+
+  const phone = params.phone ? normalizePhone(params.phone) : "";
+  const email = params.email?.toLowerCase().trim() || "";
+
+  if (!phone && !email) return [];
+
+  const candidates = await prisma.lead.findMany({
+    where: {
+      ...getDataScope(user),
+      ...(params.leadId ? { NOT: { id: params.leadId } } : {}),
+      OR: [
+        ...(phone.length >= 8
+          ? [{ phone: { contains: phone.slice(-8) } }, { whatsapp: { contains: phone.slice(-8) } }]
+          : []),
+        ...(email ? [{ email }] : []),
+      ],
+    },
+    select: { id: true, name: true, phone: true, email: true },
+    take: limit,
+  });
+
+  return candidates.filter((lead) => {
+    if (email && lead.email?.toLowerCase() === email) return true;
+    if (phone && normalizePhone(lead.phone).endsWith(phone.slice(-8))) return true;
+    return false;
+  });
 }

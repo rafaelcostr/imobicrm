@@ -19,45 +19,77 @@ type VitrineProperty = {
   media: Array<{ url: string }>;
 };
 
+function buildImageAlt(property: VitrineProperty): string {
+  return `${property.title} — ${PROPERTY_TYPE_LABELS[property.type]} para ${PROPERTY_PURPOSE_LABELS[property.purpose].toLowerCase()} em ${property.city}/${property.state}`;
+}
+
 export function VitrinePropertyCard({ property }: { property: VitrineProperty }) {
   const cover = property.media[0]?.url;
+  const headingId = `property-title-${property.code}`;
+  const imageAlt = buildImageAlt(property);
 
   return (
-    <Link href={`/vitrine/${property.code}`}>
-      <Card className="overflow-hidden transition-shadow hover:shadow-md">
-        <div className="relative flex h-48 items-center justify-center bg-muted">
-          {cover ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={cover} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <Building2 className="h-12 w-12 text-muted-foreground" aria-hidden="true" />
-          )}
-          <Badge className="absolute left-3 top-3" variant="secondary">
-            {PROPERTY_PURPOSE_LABELS[property.purpose]}
-          </Badge>
-        </div>
-        <CardContent className="space-y-2 p-4">
-          <div>
-            <p className="font-semibold line-clamp-1">{property.title}</p>
-            <p className="text-xs text-muted-foreground">{property.code}</p>
+    <article aria-labelledby={headingId} className="h-full">
+      <Link
+        href={`/vitrine/${property.code}`}
+        className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        <Card className="h-full overflow-hidden transition-shadow hover:shadow-md">
+          <div className="relative flex h-48 items-center justify-center bg-muted">
+            {cover ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={cover}
+                alt={imageAlt}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <>
+                <Building2 className="h-12 w-12 text-muted-foreground" aria-hidden="true" />
+                <span className="sr-only">{imageAlt}</span>
+              </>
+            )}
+            <Badge className="absolute left-3 top-3" variant="secondary">
+              {PROPERTY_PURPOSE_LABELS[property.purpose]}
+            </Badge>
           </div>
-          <p className="text-lg font-bold text-primary">{formatCurrency(Number(property.price))}</p>
-          <p className="text-xs text-muted-foreground">
-            {PROPERTY_TYPE_LABELS[property.type]} · {property.city}/{property.state}
-          </p>
-          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Bed className="h-3.5 w-3.5" aria-hidden="true" /> {property.bedrooms}
-            </span>
-            <span className="flex items-center gap-1">
-              <Bath className="h-3.5 w-3.5" aria-hidden="true" /> {property.bathrooms}
-            </span>
-            <span className="flex items-center gap-1">
-              <Car className="h-3.5 w-3.5" aria-hidden="true" /> {property.garages}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
+          <CardContent className="space-y-2 p-4">
+            <header>
+              <h2 id={headingId} className="font-semibold line-clamp-2">
+                {property.title}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Código: <span className="font-mono">{property.code}</span>
+              </p>
+            </header>
+            <p className="text-lg font-bold text-primary">
+              <span className="sr-only">Preço: </span>
+              {formatCurrency(Number(property.price))}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {PROPERTY_TYPE_LABELS[property.type]} · {property.city}/{property.state}
+            </p>
+            <dl className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <dt className="sr-only">Quartos</dt>
+                <Bed className="h-3.5 w-3.5" aria-hidden="true" />
+                <dd>{property.bedrooms}</dd>
+              </div>
+              <div className="flex items-center gap-1">
+                <dt className="sr-only">Banheiros</dt>
+                <Bath className="h-3.5 w-3.5" aria-hidden="true" />
+                <dd>{property.bathrooms}</dd>
+              </div>
+              <div className="flex items-center gap-1">
+                <dt className="sr-only">Vagas</dt>
+                <Car className="h-3.5 w-3.5" aria-hidden="true" />
+                <dd>{property.garages}</dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+      </Link>
+    </article>
   );
 }

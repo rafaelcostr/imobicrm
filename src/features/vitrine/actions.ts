@@ -32,13 +32,17 @@ const publicPropertySelect = {
   },
 } as const;
 
-function buildPublicWhere(filters?: {
-  search?: string;
-  type?: PropertyType;
-  purpose?: PropertyPurpose;
-  city?: string;
-}) {
+function buildPublicWhere(
+  filters?: {
+    search?: string;
+    type?: PropertyType;
+    purpose?: PropertyPurpose;
+    city?: string;
+  },
+  organizationId?: string,
+) {
   return {
+    ...(organizationId ? { organizationId } : {}),
     isPublished: true,
     status: "DISPONIVEL" as const,
     ...(filters?.type ? { type: filters.type } : {}),
@@ -66,9 +70,19 @@ export async function getPublicProperties(filters?: {
   city?: string;
   page?: string;
   pageSize?: string;
+  organizationId?: string;
 }) {
+  const organizationId = filters?.organizationId;
   const { page, pageSize, skip } = parsePagination(filters);
-  const where = buildPublicWhere(filters);
+  const where = buildPublicWhere(
+    {
+      search: filters?.search,
+      type: filters?.type,
+      purpose: filters?.purpose,
+      city: filters?.city,
+    },
+    organizationId,
+  );
 
   const [items, total] = await Promise.all([
     prisma.property.findMany({
@@ -84,9 +98,10 @@ export async function getPublicProperties(filters?: {
   return buildPaginatedResult(items, total, page, pageSize);
 }
 
-export async function getPublicPropertyByCode(code: string) {
+export async function getPublicPropertyByCode(code: string, organizationId?: string) {
   return prisma.property.findFirst({
     where: {
+      ...(organizationId ? { organizationId } : {}),
       code: { equals: code, mode: "insensitive" },
       isPublished: true,
       status: "DISPONIVEL",
@@ -101,21 +116,27 @@ export async function getPublicPropertyByCode(code: string) {
   });
 }
 
-export async function getPublicPropertyFilterOptions() {
+export async function getPublicPropertyFilterOptions(organizationId?: string) {
+  const baseWhere = {
+    isPublished: true,
+    status: "DISPONIVEL" as const,
+    ...(organizationId ? { organizationId } : {}),
+  };
+
   const [cities, types, purposes] = await Promise.all([
     prisma.property.findMany({
-      where: { isPublished: true, status: "DISPONIVEL" },
+      where: baseWhere,
       select: { city: true },
       distinct: ["city"],
       orderBy: { city: "asc" },
     }),
     prisma.property.groupBy({
       by: ["type"],
-      where: { isPublished: true, status: "DISPONIVEL" },
+      where: baseWhere,
     }),
     prisma.property.groupBy({
       by: ["purpose"],
-      where: { isPublished: true, status: "DISPONIVEL" },
+      where: baseWhere,
     }),
   ]);
 
@@ -124,4 +145,16 @@ export async function getPublicPropertyFilterOptions() {
     types: types.map((t) => t.type),
     purposes: purposes.map((p) => p.purpose),
   };
+}
+
+export async function getPublicPropertyCodesForSitemap(organizationId?: string) {
+  return prisma.property.findMany({
+    where: {
+      ...(organizationId ? { organizationId } : {}),
+      isPublished: true,
+      status: "DISPONIVEL",
+    },
+    select: { code: true, updatedAt: true, publishedAt: true },
+    orderBy: { updatedAt: "desc" },
+  });
 }

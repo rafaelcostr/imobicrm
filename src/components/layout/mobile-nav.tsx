@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
+import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 import { hasPermission } from "@/lib/permissions";
 import type { Role } from "@prisma/client";
@@ -25,7 +26,7 @@ export function MobileNav({ role, userName }: MobileNavProps) {
     <>
       <div className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background px-4">
         <div>
-          <p className="text-sm font-bold">IMOBI CRM</p>
+          <p className="text-sm font-bold">{BRAND.product}</p>
           <p className="text-xs text-muted-foreground">Olá, {userName.split(" ")[0]}!</p>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setMenuOpen(true)} aria-label="Menu">

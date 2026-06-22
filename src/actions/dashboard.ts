@@ -4,6 +4,8 @@ import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { getCommissionScope, getDataScope, getSaleScope, getVisitScope } from "@/lib/broker-scope";
+import { getOrgScope } from "@/lib/organization";
 import { formatCurrency } from "@/lib/utils";
 import { calcTrend } from "@/lib/trend";
 import { LEAD_SOURCE_LABELS } from "@/lib/labels";
@@ -30,7 +32,10 @@ export async function getDashboardStats() {
   const user = await requireAuth();
   const role = user.role as Role;
   const isBroker = role === "CORRETOR";
-  const brokerFilter = isBroker ? { brokerId: user.id } : {};
+  const dataScope = getDataScope(user);
+  const visitScope = getVisitScope(user);
+  const saleScope = getSaleScope(user);
+  const commissionScope = getCommissionScope(user);
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -55,65 +60,65 @@ export async function getDashboardStats() {
     brokerRanking,
     funnelData,
   ] = await Promise.all([
-    prisma.lead.count({ where: brokerFilter }),
-    prisma.lead.count({ where: { ...brokerFilter, createdAt: { gte: startOfMonth } } }),
+    prisma.lead.count({ where: dataScope }),
+    prisma.lead.count({ where: { ...dataScope, createdAt: { gte: startOfMonth } } }),
     prisma.lead.count({
-      where: { ...brokerFilter, createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
+      where: { ...dataScope, createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
     }),
-    prisma.property.count({ where: isBroker ? { brokerId: user.id } : {} }),
+    prisma.property.count({ where: dataScope }),
     prisma.visit.count({
       where: {
-        ...(isBroker ? { brokerId: user.id } : {}),
+        ...visitScope,
         scheduledAt: { gte: startOfMonth },
       },
     }),
     prisma.visit.count({
       where: {
-        ...(isBroker ? { brokerId: user.id } : {}),
+        ...visitScope,
         scheduledAt: { gte: startOfLastMonth, lte: endOfLastMonth },
       },
     }),
     prisma.proposal.count({
-      where: { ...(isBroker ? { brokerId: user.id } : {}), sentAt: { gte: startOfMonth } },
+      where: { ...visitScope, sentAt: { gte: startOfMonth } },
     }),
     prisma.proposal.count({
       where: {
-        ...(isBroker ? { brokerId: user.id } : {}),
+        ...visitScope,
         sentAt: { gte: startOfLastMonth, lte: endOfLastMonth },
       },
     }),
     prisma.sale.count({
-      where: { ...(isBroker ? { brokerId: user.id } : {}), closedAt: { gte: startOfMonth } },
+      where: { ...saleScope, closedAt: { gte: startOfMonth } },
     }),
     prisma.sale.count({
       where: {
-        ...(isBroker ? { brokerId: user.id } : {}),
+        ...saleScope,
         closedAt: { gte: startOfLastMonth, lte: endOfLastMonth },
       },
     }),
     prisma.commission.aggregate({
-      where: { ...(isBroker ? { brokerId: user.id } : {}), status: { in: ["PENDENTE", "EM_PROCESSAMENTO"] } },
+      where: { ...commissionScope, status: { in: ["PENDENTE", "EM_PROCESSAMENTO"] } },
       _sum: { amount: true },
     }),
     prisma.commission.aggregate({
-      where: { ...(isBroker ? { brokerId: user.id } : {}), status: "PAGO", paidAt: { gte: startOfMonth } },
+      where: { ...commissionScope, status: "PAGO", paidAt: { gte: startOfMonth } },
       _sum: { amount: true },
     }),
     prisma.lead.groupBy({
       by: ["source"],
-      where: brokerFilter,
+      where: dataScope,
       _count: { id: true },
     }),
     prisma.sale.findMany({
       where: {
-        ...(isBroker ? { brokerId: user.id } : {}),
+        ...saleScope,
         closedAt: { gte: new Date(now.getFullYear(), now.getMonth() - 5, 1) },
       },
       select: { closedAt: true },
     }),
     hasPermission(role, "brokers:view")
       ? prisma.user.findMany({
-          where: { role: "CORRETOR", isActive: true },
+          where: { role: "CORRETOR", isActive: true, ...getOrgScope(user) },
           select: {
             id: true,
             name: true,
@@ -128,7 +133,7 @@ export async function getDashboardStats() {
       : Promise.resolve([]),
     prisma.lead.groupBy({
       by: ["stage"],
-      where: brokerFilter,
+      where: dataScope,
       _count: { id: true },
     }),
   ]);
@@ -162,14 +167,14 @@ export async function getDashboardStats() {
     .sort((a, b) => b.sales - a.sales);
 
   const recentLeads = await prisma.lead.findMany({
-    where: brokerFilter,
+    where: dataScope,
     orderBy: { createdAt: "desc" },
     take: 5,
     include: { broker: { select: { name: true } } },
   });
 
   const featuredProperties = await prisma.property.findMany({
-    where: { status: "DISPONIVEL", ...(isBroker ? { brokerId: user.id } : {}) },
+    where: { status: "DISPONIVEL", ...dataScope },
     take: 4,
     include: { media: { take: 1, where: { type: "IMAGE" } } },
     orderBy: { createdAt: "desc" },
@@ -177,7 +182,8 @@ export async function getDashboardStats() {
 
   const todayTasks = await prisma.task.findMany({
     where: {
-      userId: isBroker ? user.id : undefined,
+      ...dataScope,
+      ...(isBroker ? { userId: user.id } : {}),
       startAt: {
         gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
         lt: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1),

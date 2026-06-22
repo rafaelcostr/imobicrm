@@ -20,14 +20,45 @@ export type Permission =
   | "agenda:view"
   | "agenda:manage"
   | "whatsapp:view"
+  | "whatsapp:manage"
   | "reports:view"
   | "reports:export"
   | "settings:view"
   | "settings:manage"
   | "teams:manage"
-  | "users:manage";
+  | "users:manage"
+  | "automations:manage";
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
+  SUPER_ADMIN: [
+    "dashboard:view",
+    "leads:view",
+    "leads:create",
+    "leads:edit",
+    "leads:delete",
+    "leads:assign",
+    "funnel:view",
+    "funnel:move",
+    "properties:view",
+    "properties:create",
+    "properties:edit",
+    "properties:delete",
+    "brokers:view",
+    "brokers:edit",
+    "commissions:view",
+    "commissions:manage",
+    "agenda:view",
+    "agenda:manage",
+    "whatsapp:view",
+    "whatsapp:manage",
+    "reports:view",
+    "reports:export",
+    "settings:view",
+    "settings:manage",
+    "teams:manage",
+    "users:manage",
+    "automations:manage",
+  ],
   ADMIN: [
     "dashboard:view",
     "leads:view",
@@ -48,12 +79,14 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "agenda:view",
     "agenda:manage",
     "whatsapp:view",
+    "whatsapp:manage",
     "reports:view",
     "reports:export",
     "settings:view",
     "settings:manage",
     "teams:manage",
     "users:manage",
+    "automations:manage",
   ],
   GESTOR: [
     "dashboard:view",
@@ -72,9 +105,12 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "agenda:view",
     "agenda:manage",
     "whatsapp:view",
+    "whatsapp:manage",
     "reports:view",
     "reports:export",
     "settings:view",
+    "teams:manage",
+    "automations:manage",
   ],
   CORRETOR: [
     "dashboard:view",
@@ -106,6 +142,7 @@ export function requirePermission(role: Role, permission: Permission): void {
 }
 
 export const ROLE_LABELS: Record<Role, string> = {
+  SUPER_ADMIN: "Super Admin",
   ADMIN: "Administrador",
   GESTOR: "Gestor",
   CORRETOR: "Corretor",

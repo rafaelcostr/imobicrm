@@ -2,6 +2,7 @@ import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { applySecurityHeaders, rateLimitRoute } from "@/lib/security";
+import { extractTenantSlugFromHost } from "@/lib/organization";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -16,8 +17,13 @@ export async function middleware(request: NextRequest) {
     if (limited) return applySecurityHeaders(limited);
   }
 
-  if (pathname.startsWith("/vitrine")) {
-    const limited = rateLimitRoute(request, "vitrine-page", 60, 60_000);
+  if (pathname.startsWith("/vitrine") || pathname === "/") {
+    const limited = rateLimitRoute(
+      request,
+      pathname === "/" ? "landing-page" : "vitrine-page",
+      pathname === "/" ? 40 : 60,
+      60_000,
+    );
     if (limited) return applySecurityHeaders(limited);
   }
 
@@ -27,20 +33,38 @@ export async function middleware(request: NextRequest) {
   });
 
   const isLoggedIn = !!token;
+  const role = token?.role as string | undefined;
 
   const publicRoutes = ["/captura", "/vitrine", "/privacidade"];
-  const authRoutes = ["/login", "/recuperar-senha", "/redefinir-senha"];
+  const authRoutes = ["/login", "/recuperar-senha", "/redefinir-senha", "/cadastro"];
 
   let response: NextResponse;
 
   if (publicRoutes.some((r) => pathname.startsWith(r))) {
     response = NextResponse.next();
   } else if (pathname === "/") {
-    const url = request.nextUrl.clone();
-    url.pathname = isLoggedIn ? "/dashboard" : "/login";
-    response = NextResponse.redirect(url);
+    if (isLoggedIn) {
+      const url = request.nextUrl.clone();
+      url.pathname = role === "SUPER_ADMIN" ? "/super-admin" : "/dashboard";
+      response = NextResponse.redirect(url);
+    } else {
+      response = NextResponse.next();
+    }
   } else if (authRoutes.some((r) => pathname.startsWith(r))) {
     if (isLoggedIn) {
+      const url = request.nextUrl.clone();
+      url.pathname = role === "SUPER_ADMIN" ? "/super-admin" : "/dashboard";
+      response = NextResponse.redirect(url);
+    } else {
+      response = NextResponse.next();
+    }
+  } else if (pathname.startsWith("/super-admin")) {
+    if (!isLoggedIn) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("callbackUrl", pathname);
+      response = NextResponse.redirect(url);
+    } else if (role !== "SUPER_ADMIN") {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
       response = NextResponse.redirect(url);
@@ -52,13 +76,26 @@ export async function middleware(request: NextRequest) {
     url.pathname = "/login";
     url.searchParams.set("callbackUrl", pathname);
     response = NextResponse.redirect(url);
+  } else if (role === "SUPER_ADMIN") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/super-admin";
+    response = NextResponse.redirect(url);
   } else {
     response = NextResponse.next();
+  }
+
+  const tenantSlug = extractTenantSlugFromHost(request.headers.get("host") ?? "");
+  if (tenantSlug) {
+    response.cookies.set("tenant_slug", tenantSlug, {
+      path: "/",
+      sameSite: "lax",
+      httpOnly: true,
+    });
   }
 
   return applySecurityHeaders(response);
 }
 
 export const config = {
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api/auth|api/webhooks|api/public|api/cron|_next/static|_next/image|favicon.ico).*)"],
 };

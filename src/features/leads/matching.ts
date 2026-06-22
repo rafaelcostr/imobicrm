@@ -5,7 +5,7 @@ import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
-import { getBrokerScope } from "@/lib/broker-scope";
+import { getDataScope } from "@/lib/broker-scope";
 import { rankPropertyMatches } from "@/lib/property-match";
 import { assertLeadAccess } from "@/lib/access-control";
 
@@ -33,7 +33,7 @@ export async function getPropertyMatchesForLead(leadId: string) {
   const properties = await prisma.property.findMany({
     where: {
       status: "DISPONIVEL",
-      ...getBrokerScope(user),
+      ...getDataScope(user),
     },
     select: {
       id: true,

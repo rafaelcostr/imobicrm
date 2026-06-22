@@ -13,6 +13,7 @@ import { passwordSchema } from "@/lib/password-policy";
 export const loginSchema = z.object({
   email: z.string().email("E-mail inválido"),
   password: passwordSchema,
+  organizationSlug: z.string().max(48).optional(),
 });
 
 export const leadSchema = z.object({
@@ -99,4 +100,47 @@ export const publicLeadSchema = z.object({
   lgpdConsent: z.literal(true, {
     message: "É necessário aceitar a política de privacidade.",
   }),
+});
+
+export const webhookLeadSchema = z.object({
+  name: z.string().min(2).max(120),
+  phone: z.string().min(8).max(20),
+  email: z.string().email().optional().or(z.literal("")),
+  interest: z.string().max(200).optional(),
+  city: z.string().max(80).optional(),
+  state: z.string().max(2).optional(),
+  source: z.string().max(40).optional(),
+  propertyCode: z.string().max(30).optional(),
+  externalId: z.string().max(120).optional(),
+  portal: z.string().max(40).optional(),
+});
+
+export const userCreateSchema = z.object({
+  name: z.string().min(2).max(120),
+  email: z.string().email(),
+  role: z.enum(["ADMIN", "GESTOR", "CORRETOR"]),
+  phone: z.string().max(20).optional(),
+  creci: z.string().max(30).optional(),
+  teamId: z.string().optional(),
+  monthlyGoal: z.coerce.number().positive().optional(),
+});
+
+export const userUpdateSchema = userCreateSchema
+  .partial()
+  .extend({
+    email: z.string().email().optional(),
+    isActive: z.boolean().optional(),
+    replyToEmail: z.string().email().optional().or(z.literal("")),
+    emailSignature: z.string().max(500).optional(),
+  });
+
+export const teamSchema = z.object({
+  name: z.string().min(2).max(100),
+});
+
+export const systemConfigSchema = z.object({
+  companyName: z.string().min(2).max(120),
+  tagline: z.string().max(200).optional(),
+  defaultMonthlyGoal: z.coerce.number().positive().optional(),
+  capturePageTitle: z.string().max(120).optional(),
 });

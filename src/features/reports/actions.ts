@@ -4,7 +4,9 @@ import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
-import { getBrokerScope } from "@/lib/broker-scope";
+import { getDataScope, getSaleScope, getCommissionScope } from "@/lib/broker-scope";
+import { exportFilename } from "@/lib/brand";
+import { requireOrganizationId } from "@/lib/organization";
 
 export async function generateReport(type: "LEADS" | "VENDAS" | "CORRETORES" | "IMOVEIS" | "COMISSOES") {
   const user = await requireAuth();
@@ -14,7 +16,9 @@ export async function generateReport(type: "LEADS" | "VENDAS" | "CORRETORES" | "
     throw new Error("Acesso negado. Você não possui permissão para este relatório.");
   }
 
-  const brokerFilter = getBrokerScope(user);
+  const dataScope = getDataScope(user);
+  const saleScope = getSaleScope(user);
+  const organizationId = requireOrganizationId(user);
 
   let data: unknown = {};
   let title = "";
@@ -23,7 +27,7 @@ export async function generateReport(type: "LEADS" | "VENDAS" | "CORRETORES" | "
     case "LEADS":
       title = "Relatório de Leads";
       data = await prisma.lead.findMany({
-        where: brokerFilter,
+        where: dataScope,
         select: {
           id: true,
           name: true,
@@ -44,7 +48,7 @@ export async function generateReport(type: "LEADS" | "VENDAS" | "CORRETORES" | "
     case "VENDAS":
       title = "Relatório de Vendas";
       data = await prisma.sale.findMany({
-        where: brokerFilter,
+        where: saleScope,
         include: {
           property: { select: { title: true, code: true, city: true, state: true } },
           broker: { select: { name: true } },
@@ -56,7 +60,10 @@ export async function generateReport(type: "LEADS" | "VENDAS" | "CORRETORES" | "
     case "CORRETORES":
       title = "Relatório de Corretores";
       data = await prisma.user.findMany({
-        where: { role: "CORRETOR" },
+        where: {
+          role: "CORRETOR",
+          ...(organizationId ? { organizationId } : {}),
+        },
         select: {
           id: true,
           name: true,
@@ -71,7 +78,7 @@ export async function generateReport(type: "LEADS" | "VENDAS" | "CORRETORES" | "
     case "IMOVEIS":
       title = "Relatório de Imóveis";
       data = await prisma.property.findMany({
-        where: brokerFilter,
+        where: dataScope,
         select: {
           id: true,
           code: true,
@@ -90,7 +97,7 @@ export async function generateReport(type: "LEADS" | "VENDAS" | "CORRETORES" | "
     case "COMISSOES":
       title = "Relatório de Comissões";
       data = await prisma.commission.findMany({
-        where: brokerFilter,
+        where: getCommissionScope(user),
         select: {
           id: true,
           propertyValue: true,
@@ -113,8 +120,21 @@ export async function generateReport(type: "LEADS" | "VENDAS" | "CORRETORES" | "
       title,
       data: JSON.parse(JSON.stringify(data)),
       userId: user.id,
+      organizationId,
     },
   });
 
   return report;
+}
+
+export async function exportReportXlsx(type: "LEADS" | "VENDAS" | "CORRETORES" | "IMOVEIS" | "COMISSOES") {
+  const report = await generateReport(type);
+  const { reportDataToXlsxBuffer } = await import("@/lib/report-xlsx");
+  const buffer = await reportDataToXlsxBuffer(report.title, report.data);
+  const slug = type.toLowerCase();
+
+  return {
+    filename: exportFilename(slug, "xlsx"),
+    base64: buffer.toString("base64"),
+  };
 }

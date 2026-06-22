@@ -1,4 +1,6 @@
 import { randomUUID } from "crypto";
+import { mkdir, unlink, writeFile } from "fs/promises";
+import path from "path";
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -75,7 +77,12 @@ export async function uploadFile(
   }
 
   const ext = file.name.split(".").pop()?.toLowerCase() || "bin";
-  const key = `${context}/${entityId}/${randomUUID()}.${ext}`;
+  const fileId = randomUUID();
+  const key = `${context}/${entityId}/${fileId}.${ext}`;
+
+  if (!isStorageConfigured()) {
+    return uploadFileLocally(buffer, key, contentType, buffer.length);
+  }
 
   const client = getS3Client();
   await client.send(
@@ -96,7 +103,36 @@ export async function uploadFile(
   };
 }
 
+async function uploadFileLocally(
+  buffer: Buffer,
+  key: string,
+  contentType: string,
+  size: number,
+): Promise<{ key: string; url: string; contentType: string; size: number }> {
+  const relativePath = path.join("uploads", key);
+  const absolutePath = path.join(process.cwd(), "public", relativePath);
+  await mkdir(path.dirname(absolutePath), { recursive: true });
+  await writeFile(absolutePath, buffer);
+
+  return {
+    key,
+    url: `/${relativePath.replace(/\\/g, "/")}`,
+    contentType,
+    size,
+  };
+}
+
+export function isUploadAvailable(): boolean {
+  return true;
+}
+
 export async function deleteFileByUrl(url: string): Promise<void> {
+  if (url.startsWith("/uploads/")) {
+    const absolutePath = path.join(process.cwd(), "public", url.replace(/^\//, ""));
+    await unlink(absolutePath).catch(() => undefined);
+    return;
+  }
+
   if (!isStorageConfigured()) return;
 
   const publicBase = process.env.S3_PUBLIC_URL?.replace(/\/$/, "");

@@ -110,21 +110,21 @@ export function PropertyMediaUpload({
             accept="image/jpeg,image/png,image/webp,application/pdf"
             className="hidden"
             onChange={handleUpload}
-            disabled={!storageConfigured || uploading}
+            disabled={uploading}
           />
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => inputRef.current?.click()}
-            disabled={!storageConfigured || uploading}
+            disabled={uploading}
           >
             <Upload className="mr-2 h-4 w-4" />
             {uploading ? "Enviando..." : "Enviar foto"}
           </Button>
           {!storageConfigured && (
             <p className="text-xs text-muted-foreground">
-              Configure R2/S3 (S3_*) no .env para habilitar upload.
+              Sem S3/R2: arquivos salvos localmente em public/uploads.
             </p>
           )}
         </div>

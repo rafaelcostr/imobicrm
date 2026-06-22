@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Home,
 } from "lucide-react";
+import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { Role } from "@prisma/client";
@@ -36,8 +37,8 @@ export function Sidebar({ role, collapsed, onToggle }: SidebarProps) {
         </div>
         {!collapsed && (
           <div>
-            <p className="text-sm font-bold tracking-wide">IMOBI CRM</p>
-            <p className="text-xs text-muted-foreground">Gestão imobiliária</p>
+            <p className="text-sm font-bold tracking-wide">{BRAND.product}</p>
+            <p className="text-xs text-muted-foreground">{BRAND.platform}</p>
           </div>
         )}
       </div>

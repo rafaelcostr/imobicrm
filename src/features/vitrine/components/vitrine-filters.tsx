@@ -46,6 +46,8 @@ export function VitrineFilters({ cities, types, purposes, current }: VitrineFilt
 
   return (
     <form
+      role="search"
+      aria-label="Filtrar imóveis"
       className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-5"
       onSubmit={(e) => {
         e.preventDefault();

@@ -1,4 +1,4 @@
-# ImobiCRM — Roadmap de Evolução
+# Syntra Imóveis — Roadmap de Evolução
 
 > Objetivo: evoluir o MVP atual para um CRM imobiliário completo, inspirado no Kommo, com diferenciais do mercado imobiliário brasileiro.
 >
@@ -29,27 +29,23 @@ Captação → Lead → Funil → Visita → Proposta → Venda → Comissão
 - Imóveis (CRUD, mídia S3/R2, vitrine pública)
 - Negociações (visitas, propostas, vendas)
 - Comissões (cálculo e listagem)
+- WhatsApp (API Meta + inbox no lead + fallback wa.me)
+- E-mail vinculado ao lead (envio SMTP + histórico na ficha)
+- Automações (6 regras pré-configuradas + distribuição de leads)
+- Webhooks de leads + Meta Lead Ads + embed + importação CSV
 - Captação pública com LGPD (`/captura`)
 - Auth com 3 perfis + recuperação de senha
 - RBAC no código (`permissions.ts`, `access-control.ts`)
 
 ### ⚠️ Parcial (backend existe, UI incompleta)
-- Agenda / tarefas
-- WhatsApp (simulado)
-- Configurações (página estática)
-- Notificações (modelo no banco, sem UI)
-- Relatórios (JSON; Excel/PDF stub)
-- Anexos de lead (modelo sem upload)
-- Gestão de usuários e equipes (permissões sem tela)
-
-### ❌ Ainda não existe
-- WhatsApp Business API real
-- Inbox unificada (WhatsApp + e-mail)
-- Automações / workflows
-- Webhooks de portais (Zap, OLX, Meta Ads)
-- Busca global
+- IMAP inbound por corretor (recebimento automático de e-mail)
+- Calendário Google (sync visitas/tarefas)
+- Webhooks de portais nativos (integração direta OLX/Zap API)
 - Multi-tenant SaaS
 - Campos customizáveis / funis customizáveis
+
+### ❌ Ainda não existe
+- Inbox unificada (WhatsApp + e-mail)
 
 ---
 
@@ -75,9 +71,9 @@ Fase 5 ──► SaaS multi-tenant        (4–6 semanas, opcional)
 | 0.1 | Agenda completa: criar, editar, concluir e excluir tarefas | Alta | ✅ Concluído |
 | 0.2 | Central de notificações no sino do header | Alta | ✅ Concluído |
 | 0.3 | UI para alterar status de comissão (Pendente → Pago) | Média | ✅ Concluído |
-| 0.4 | Upload de anexos no lead | Média | Pendente |
-| 0.5 | Busca global funcional (leads, imóveis, corretores) | Média | Pendente |
-| 0.6 | Corrigir stubs: exportação Excel/PDF em relatórios | Baixa | Pendente |
+| 0.4 | Upload de anexos no lead | Média | ✅ Concluído |
+| 0.5 | Busca global funcional (leads, imóveis, corretores) | Média | ✅ Concluído |
+| 0.6 | Corrigir stubs: exportação Excel/PDF em relatórios | Baixa | ✅ Concluído |
 
 **Critério de conclusão:** corretor consegue usar o sistema no dia a dia sem “funcionalidade pela metade”.
 
@@ -89,13 +85,13 @@ Fase 5 ──► SaaS multi-tenant        (4–6 semanas, opcional)
 
 | # | Entrega | Prioridade | Detalhes |
 |---|---------|------------|----------|
-| 1.1 | Gestão de usuários | Alta | CRUD, convite por e-mail, ativar/desativar, trocar perfil |
-| 1.2 | Gestão de equipes | Alta | CRUD de `Team`, vincular corretores |
-| 1.3 | Configurações do sistema | Alta | SMTP, branding, metas padrão, etapas do funil |
-| 1.4 | Timeline unificada no lead | Alta | Histórico + notas + tarefas + mensagens em uma linha do tempo |
-| 1.5 | Filtros avançados em leads e imóveis | Média | Por etapa, origem, corretor, data, temperatura |
-| 1.6 | Duplicidade de leads | Média | Alerta por telefone/e-mail duplicado |
-| 1.7 | Log de auditoria visível | Baixa | Expandir `LeadHistory` para ações administrativas |
+| 1.1 | Gestão de usuários | Alta | ✅ Concluído |
+| 1.2 | Gestão de equipes | Alta | ✅ Concluído |
+| 1.3 | Configurações do sistema | Alta | ✅ Concluído |
+| 1.4 | Timeline unificada no lead | Alta | ✅ Concluído |
+| 1.5 | Filtros avançados em leads e imóveis | Média | ✅ Concluído |
+| 1.6 | Duplicidade de leads | Média | ✅ Concluído |
+| 1.7 | Log de auditoria visível | Baixa | ✅ Concluído (via timeline) |
 
 **Novas rotas sugeridas:**
 - `/configuracoes/usuarios`
@@ -113,11 +109,11 @@ Fase 5 ──► SaaS multi-tenant        (4–6 semanas, opcional)
 
 | # | Entrega | Prioridade | Detalhes |
 |---|---------|------------|----------|
-| 2.1 | WhatsApp Business API (Cloud API) | Alta | Webhook inbound, envio outbound, status de entrega |
-| 2.2 | Inbox por lead | Alta | Conversa WhatsApp dentro de `/leads/[id]` |
-| 2.3 | Templates de mensagem editáveis | Média | Substituir templates só de seed |
-| 2.4 | E-mail vinculado ao lead | Média | Registrar envios; preparar IMAP/SMTP por corretor |
-| 2.5 | Link `wa.me` como fallback | Baixa | Manter quando API não configurada |
+| 2.1 | WhatsApp Business API (Cloud API) | Alta | ✅ Webhook + envio + status |
+| 2.2 | Inbox por lead | Alta | ✅ `/leads/[id]` e `/whatsapp` |
+| 2.3 | Templates de mensagem editáveis | Média | ✅ CRUD na página WhatsApp |
+| 2.4 | E-mail vinculado ao lead | Média | ✅ Envio SMTP + histórico + mailto fallback |
+| 2.5 | Link `wa.me` como fallback | Baixa | ✅ Quando API não configurada |
 
 **Stack sugerida:**
 - Meta WhatsApp Cloud API (ou Evolution API / Z-API como alternativa BR)
@@ -142,12 +138,12 @@ WHATSAPP_WEBHOOK_SECRET=
 
 | # | Entrega | Prioridade | Exemplo |
 |---|---------|------------|---------|
-| 3.1 | Motor de regras simples | Alta | SE lead novo → criar tarefa “ligar em 2h” |
-| 3.2 | Automação de funil | Alta | SE visita concluída → mover para Proposta |
-| 3.3 | Distribuição inteligente de leads | Média | Round-robin, por região ou por carga |
-| 3.4 | Mensagem automática pós-captação | Média | WhatsApp template ao receber lead em `/captura` |
-| 3.5 | Alertas de lead frio | Média | Sem interação há X dias → notificação |
-| 3.6 | Automação de comissão | Baixa | SE venda fechada → gerar comissão + notificar |
+| 3.1 | Motor de regras simples | Alta | ✅ Engine + triggers + logs |
+| 3.2 | Automação de funil | Alta | ✅ Visita concluída → Proposta |
+| 3.3 | Distribuição inteligente de leads | Média | ✅ Round-robin, carga e região |
+| 3.4 | Mensagem automática pós-captação | Média | ✅ WhatsApp template na captação |
+| 3.5 | Alertas de lead frio | Média | ✅ Cron + notificação ao corretor |
+| 3.6 | Automação de comissão | Baixa | ✅ Notificação ao fechar venda |
 
 **Modelo sugerido no Prisma:**
 ```prisma
@@ -170,13 +166,13 @@ model Automation {
 
 | # | Entrega | Prioridade | Detalhes |
 |---|---------|------------|----------|
-| 4.1 | Webhook genérico de leads | Alta | `POST /api/webhooks/leads` com token |
-| 4.2 | Meta Lead Ads | Alta | Facebook/Instagram → lead automático |
-| 4.3 | Formulário embed | Média | Widget JS para sites de terceiros |
-| 4.4 | Integração portais (Zap, OLX) | Média | Via webhook ou importação CSV |
-| 4.5 | Relatórios PDF/Excel reais | Média | Biblioteca: `exceljs` + `@react-pdf/renderer` |
-| 4.6 | Calendário Google | Baixa | Sync de visitas e tarefas |
-| 4.7 | API pública documentada | Baixa | Para parceiros e integrações |
+| 4.1 | Webhook genérico de leads | Alta | ✅ POST /api/webhooks/leads |
+| 4.2 | Meta Lead Ads | Alta | ✅ POST /api/webhooks/meta-leads |
+| 4.3 | Formulário embed | Média | ✅ public/embed.js + API pública |
+| 4.4 | Integração portais (Zap, OLX) | Média | ✅ Webhook + importação CSV |
+| 4.5 | Relatórios PDF/Excel reais | Média | ✅ Excel (.xlsx) + PDF impressão |
+| 4.6 | Calendário Google | Baixa | Pendente |
+| 4.7 | API pública documentada | Baixa | ✅ Docs em /configuracoes/integracoes |
 
 **Critério de conclusão:** lead de anúncio no Instagram cai direto no funil sem digitação manual.
 
@@ -184,24 +180,36 @@ model Automation {
 
 ## Fase 5 — SaaS multi-tenant (opcional)
 **Prazo estimado:** 4–6 semanas  
-**Meta:** vender o ImobiCRM para várias imobiliárias.
+**Meta:** vender o **Syntra Imóveis** (plataforma **Syntra CRM**) para várias imobiliárias.  
+**Status:** ✅ Concluída (billing real pendente para produção)
 
 | # | Entrega | Prioridade | Detalhes |
 |---|---------|------------|----------|
-| 5.1 | Modelo `Organization` (tenant) | Alta | Isolamento de dados por imobiliária |
-| 5.2 | Subdomínio ou slug por cliente | Alta | `imobiliaria-x.imobicrm.com` |
-| 5.3 | Onboarding self-service | Média | Cadastro + trial |
-| 5.4 | Billing (Stripe / Asaas) | Média | Planos por usuário ou por imobiliária |
-| 5.5 | Super-admin | Média | Painel para dono do SaaS |
-| 5.6 | Limites por plano | Baixa | Usuários, leads, imóveis, WhatsApp |
+| 5.1 | Modelo `Organization` (tenant) | Alta | ✅ `organizationId` em entidades + seed 2 orgs |
+| 5.2 | Subdomínio ou slug por cliente | Alta | ✅ Cookie `tenant_slug` + middleware |
+| 5.3 | Onboarding self-service | Média | ✅ `/cadastro` com trial 14 dias |
+| 5.4 | Billing (Stripe / Asaas) | Média | ⏳ Campos em `Organization` (stub) |
+| 5.5 | Super-admin | Média | ✅ `/super-admin` + `super@syntra.app` |
+| 5.6 | Limites por plano | Baixa | ✅ `assertOrganizationLimit` em creates |
 
-**Critério de conclusão:** 2 imobiliárias rodando no mesmo deploy sem ver dados uma da outra.
+**Critério de conclusão:** 2 imobiliárias rodando no mesmo deploy sem ver dados uma da outra. ✅
+
+**Migração local:**
+```bash
+npx prisma migrate dev --name saas_multitenant
+npm run db:seed
+```
+
+**Credenciais seed:**
+- Super: `super@syntra.app` / `Syntra@2026`
+- Alpha (`alpha-imoveis`): `admin@syntra.app`, `gestor@syntra.app`, `joao@syntra.app`
+- Beta (`beta-imoveis`): `admin@beta-imoveis.com`
 
 ---
 
 ## Melhorias sobre o Kommo (diferenciais imobiliários)
 
-Estas features devem ser mantidas e ampliadas — é o que torna o ImobiCRM **melhor** que um CRM genérico:
+Estas features devem ser mantidas e ampliadas — é o que torna o **Syntra Imóveis** melhor que um CRM genérico:
 
 | Diferencial | Situação | Próximo passo |
 |-------------|----------|---------------|
@@ -259,9 +267,7 @@ Estas features devem ser mantidas e ampliadas — é o que torna o ImobiCRM **me
 
 ## Próximo passo imediato
 
-**Começar pela Fase 0, item 0.1 (Agenda completa)** — é a entrega de maior impacto com menor esforço, pois `src/features/agenda/actions.ts` já existe.
-
-Depois: **0.2 Notificações** → **1.1 Usuários** → **2.1 WhatsApp API**.
+**Fase 1 concluída.** Iniciar **Fase 2 — WhatsApp Business API** e inbox unificada no lead.
 
 ---
 

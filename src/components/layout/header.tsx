@@ -1,10 +1,10 @@
 "use client";
 
-import { LogOut, Moon, Plus, Search, Sun } from "lucide-react";
+import { LogOut, Moon, Plus, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { GlobalSearch } from "@/components/layout/global-search";
 import { NotificationsBell } from "@/components/layout/notifications-bell";
 import { ROLE_LABELS } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
@@ -26,10 +26,7 @@ export function Header({ userName, userRole, collapsed }: HeaderProps) {
         collapsed ? "ml-[72px]" : "ml-64",
       )}
     >
-      <div className="relative flex-1 max-w-xl">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Buscar clientes, imóveis..." className="pl-10" />
-      </div>
+      <GlobalSearch />
 
       <Button size="sm" className="hidden sm:flex">
         <Plus className="mr-2 h-4 w-4" />

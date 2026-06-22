@@ -9,6 +9,7 @@ import { generateSecureToken, hashToken } from "@/lib/tokens";
 import { passwordSchema } from "@/lib/password-policy";
 import { loginSchema } from "@/lib/validations/schemas";
 import { assertRateLimit } from "@/lib/server-rate-limit";
+import { brandLogTag } from "@/lib/brand";
 import { isEmailConfigured, sendPasswordResetEmail } from "@/lib/email";
 
 const resetRequestSchema = z.object({
@@ -32,6 +33,7 @@ export async function loginAction(formData: FormData) {
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
+    organizationSlug: formData.get("organizationSlug") || undefined,
   });
 
   if (!parsed.success) {
@@ -42,6 +44,7 @@ export async function loginAction(formData: FormData) {
     await signIn("credentials", {
       email: parsed.data.email.toLowerCase(),
       password: parsed.data.password,
+      organizationSlug: parsed.data.organizationSlug,
       redirect: false,
     });
     return { success: true };
@@ -61,7 +64,7 @@ export async function requestPasswordResetAction(formData: FormData) {
     return { error: parsed.error.issues[0]?.message };
   }
 
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findFirst({
     where: { email: parsed.data.email.toLowerCase() },
   });
 
@@ -87,7 +90,7 @@ export async function requestPasswordResetAction(formData: FormData) {
     if (isEmailConfigured()) {
       await sendPasswordResetEmail(user.email, resetUrl);
     } else if (process.env.NODE_ENV === "development") {
-      console.info(`[ImobiCRM] Link de recuperação: ${resetUrl}`);
+      console.info(`${brandLogTag()} Link de recuperação: ${resetUrl}`);
     }
   }
 

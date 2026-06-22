@@ -1,18 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BrandHeader } from "@/components/layout/brand-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { BRAND } from "@/lib/brand";
 import { loginAction } from "@/actions/auth";
 import { toast } from "sonner";
 
-export function LoginForm() {
+type LoginFormProps = {
+  brandTitle?: string;
+  brandDescription?: string;
+  organizationSlug?: string;
+};
+
+export function LoginForm({
+  brandTitle = BRAND.product,
+  brandDescription = "Entre com seu e-mail e senha para acessar o sistema",
+  organizationSlug,
+}: LoginFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryOrg = searchParams.get("org")?.trim() ?? "";
+  const resolvedOrgSlug = organizationSlug || queryOrg || undefined;
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -27,23 +42,30 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/dashboard");
+    router.push(callbackUrl.startsWith("/") ? callbackUrl : "/dashboard");
     router.refresh();
   }
 
   return (
     <Card>
       <CardHeader>
-        <BrandHeader
-          title="ImobiCRM"
-          description="Entre com seu e-mail e senha para acessar o sistema"
-        />
+        <BrandHeader title={brandTitle} description={brandDescription} />
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" aria-label="Formulário de login">
+          {resolvedOrgSlug ? (
+            <input type="hidden" name="organizationSlug" value={resolvedOrgSlug} />
+          ) : null}
           <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
-            <Input id="email" name="email" type="email" required autoComplete="email" placeholder="seu@email.com" />
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              placeholder="seu@email.com"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>
@@ -65,6 +87,13 @@ export function LoginForm() {
             Esqueceu sua senha?
           </Link>
         </p>
+        {!organizationSlug && (
+          <p className="mt-2 text-center text-sm text-muted-foreground">
+            <Link href="/cadastro" className="text-primary hover:underline">
+              Criar conta da imobiliária
+            </Link>
+          </p>
+        )}
       </CardContent>
     </Card>
   );

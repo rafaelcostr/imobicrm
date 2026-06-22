@@ -6,7 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
 import { assertLeadAccess } from "@/lib/access-control";
-import { getBrokerUserId } from "@/lib/broker-scope";
+import { getBrokerUserId, getDataScope } from "@/lib/broker-scope";
+import { requireOrganizationId } from "@/lib/organization";
 import { sanitizeString } from "@/lib/utils";
 import { taskSchema } from "@/lib/validations/schemas";
 import type { z } from "zod";
@@ -37,6 +38,7 @@ export async function getTasks(filters?: {
 
   return prisma.task.findMany({
     where: {
+      ...getDataScope(user),
       ...(userId ? { userId } : {}),
       startAt: { gte: start, lte: end },
       ...(filters?.status === "pending" ? { completed: false } : {}),
@@ -74,8 +76,11 @@ export async function createTask(data: z.infer<typeof taskSchema>) {
     await assertLeadAccess(parsed.leadId, user.id, user.role as Role);
   }
 
+  const organizationId = requireOrganizationId(user);
+
   const task = await prisma.task.create({
     data: {
+      organizationId,
       title: sanitizeString(parsed.title, 200),
       description: parsed.description
         ? sanitizeString(parsed.description, 1000)

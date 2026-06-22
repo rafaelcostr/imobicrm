@@ -5,6 +5,7 @@ import {
   PropertyStatus,
   MediaType,
   Role,
+  PropertyType,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
@@ -12,16 +13,31 @@ import { requirePermission } from "@/lib/permissions";
 import { sanitizeString } from "@/lib/utils";
 import { propertySchema } from "@/lib/validations/schemas";
 import { buildPaginatedResult, parsePagination } from "@/lib/pagination";
-import { isStorageConfigured, uploadFile, deleteFileByUrl, inferMediaType } from "@/lib/storage";
+import { requireOrganizationId, assertOrganizationLimit } from "@/lib/organization";
+import { getDataScope } from "@/lib/broker-scope";
+import { isStorageConfigured, isUploadAvailable, uploadFile, deleteFileByUrl, inferMediaType } from "@/lib/storage";
 import type { z } from "zod";
 
 function buildPropertyWhere(
-  user: { id: string; role: Role },
-  filters?: { search?: string; status?: PropertyStatus },
+  user: { id: string; role: Role; organizationId?: string | null },
+  filters?: {
+    search?: string;
+    status?: PropertyStatus;
+    type?: PropertyType;
+    city?: string;
+    brokerId?: string;
+  },
 ) {
   return {
-    ...(user.role === "CORRETOR" ? { brokerId: user.id } : {}),
+    ...getDataScope(user),
+    ...(filters?.brokerId && user.role !== "CORRETOR"
+      ? { brokerId: filters.brokerId }
+      : {}),
     ...(filters?.status ? { status: filters.status } : {}),
+    ...(filters?.type ? { type: filters.type } : {}),
+    ...(filters?.city
+      ? { city: { contains: filters.city, mode: "insensitive" as const } }
+      : {}),
     ...(filters?.search
       ? {
           OR: [
@@ -37,6 +53,9 @@ function buildPropertyWhere(
 export async function getProperties(filters?: {
   search?: string;
   status?: PropertyStatus;
+  type?: PropertyType;
+  city?: string;
+  brokerId?: string;
   page?: string;
   pageSize?: string;
 }) {
@@ -69,7 +88,7 @@ export async function getPropertyOptions(availableOnly = true) {
 
   return prisma.property.findMany({
     where: {
-      ...(user.role === "CORRETOR" ? { brokerId: user.id } : {}),
+      ...getDataScope(user),
       ...(availableOnly ? { status: "DISPONIVEL" } : {}),
     },
     select: { id: true, title: true, code: true, price: true, city: true },
@@ -88,6 +107,13 @@ export async function getPropertyById(id: string) {
   });
 
   if (!property) return null;
+  if (
+    user.role !== "SUPER_ADMIN" &&
+    user.organizationId &&
+    property.organizationId !== user.organizationId
+  ) {
+    throw new Error("Acesso negado");
+  }
   if (user.role === "CORRETOR" && property.brokerId !== user.id) {
     throw new Error("Acesso negado");
   }
@@ -99,10 +125,19 @@ export async function createProperty(data: z.infer<typeof propertySchema>) {
   requirePermission(user.role as Role, "properties:create");
 
   const parsed = propertySchema.parse(data);
+  const organizationId = requireOrganizationId(user);
+  await assertOrganizationLimit(organizationId, "properties");
+
+  const code = sanitizeString(parsed.code, 30).toUpperCase();
+  const codeTaken = await prisma.property.findFirst({
+    where: { organizationId, code },
+  });
+  if (codeTaken) throw new Error("Código de imóvel já em uso nesta organização");
 
   const property = await prisma.property.create({
     data: {
-      code: sanitizeString(parsed.code, 30).toUpperCase(),
+      organizationId,
+      code,
       title: sanitizeString(parsed.title, 200),
       description: parsed.description ? sanitizeString(parsed.description, 5000) : null,
       type: parsed.type,
@@ -142,11 +177,18 @@ export async function updateProperty(id: string, data: z.infer<typeof propertySc
   await getPropertyById(id);
 
   const parsed = propertySchema.parse(data);
+  const organizationId = requireOrganizationId(user);
+  const code = sanitizeString(parsed.code, 30).toUpperCase();
+
+  const codeTaken = await prisma.property.findFirst({
+    where: { organizationId, code, NOT: { id } },
+  });
+  if (codeTaken) throw new Error("Código de imóvel já em uso nesta organização");
 
   const property = await prisma.property.update({
     where: { id },
     data: {
-      code: sanitizeString(parsed.code, 30).toUpperCase(),
+      code,
       title: sanitizeString(parsed.title, 200),
       description: parsed.description ? sanitizeString(parsed.description, 5000) : null,
       type: parsed.type,
@@ -197,8 +239,8 @@ export async function uploadPropertyMedia(propertyId: string, formData: FormData
   const user = await requireAuth();
   requirePermission(user.role as Role, "properties:edit");
 
-  if (!isStorageConfigured()) {
-    throw new Error("Upload indisponível: configure R2/S3 nas variáveis S3_* do .env");
+  if (!isUploadAvailable()) {
+    throw new Error("Upload indisponível no momento");
   }
 
   await getPropertyById(propertyId);

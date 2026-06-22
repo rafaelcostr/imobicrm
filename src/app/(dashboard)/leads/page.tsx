@@ -1,14 +1,17 @@
 import Link from "next/link";
+import { LeadSource, LeadStage, LeadTemperature, Role } from "@prisma/client";
 import { getLeads } from "@/actions/leads";
+import { getActiveBrokers } from "@/lib/lead-assignment";
+import { auth } from "@/lib/auth";
+import { LeadFilters } from "@/features/leads/components/lead-filters";
 import { PageHeader } from "@/components/layout/page-header";
 import { Pagination } from "@/components/layout/pagination";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { pageMetadata } from "@/lib/metadata";
 import { LEAD_SOURCE_LABELS, LEAD_STAGE_LABELS, LEAD_TEMPERATURE_LABELS } from "@/lib/labels";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const metadata = pageMetadata("Leads", "Cadastre, filtre e acompanhe todos os seus leads.");
@@ -16,10 +19,42 @@ export const metadata = pageMetadata("Leads", "Cadastre, filtre e acompanhe todo
 export default async function LeadsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    page?: string;
+    source?: string;
+    stage?: string;
+    temperature?: string;
+    brokerId?: string;
+  }>;
 }) {
-  const { q, page } = await searchParams;
-  const result = await getLeads({ search: q, page });
+  const params = await searchParams;
+  const session = await auth();
+  const role = session?.user?.role as Role | undefined;
+  const showBrokerFilter = role !== "CORRETOR";
+
+  const [result, brokers] = await Promise.all([
+    getLeads({
+      search: params.q,
+      page: params.page,
+      source: params.source as LeadSource | undefined,
+      stage: params.stage as LeadStage | undefined,
+      temperature: params.temperature as LeadTemperature | undefined,
+      brokerId: params.brokerId,
+    }),
+    showBrokerFilter && session?.user?.organizationId
+      ? getActiveBrokers(session.user.organizationId)
+      : Promise.resolve([]),
+  ]);
+
+  const paginationParams = {
+    q: params.q,
+    source: params.source,
+    stage: params.stage,
+    temperature: params.temperature,
+    brokerId: params.brokerId,
+    page: params.page && params.page !== "1" ? params.page : undefined,
+  };
 
   return (
     <section className="space-y-6" aria-labelledby="page-title">
@@ -39,15 +74,17 @@ export default async function LeadsPage({
       <section aria-label="Lista de leads">
         <Card>
           <CardHeader>
-            <form className="flex gap-2" role="search">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                <Input name="q" defaultValue={q} placeholder="Buscar por nome, e-mail ou telefone..." className="pl-10" />
-              </div>
-              <Button type="submit" variant="secondary">
-                Buscar
-              </Button>
-            </form>
+            <LeadFilters
+              brokers={brokers}
+              showBrokerFilter={showBrokerFilter}
+              values={{
+                q: params.q,
+                source: params.source,
+                stage: params.stage,
+                temperature: params.temperature,
+                brokerId: params.brokerId,
+              }}
+            />
           </CardHeader>
           <CardContent className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -72,9 +109,19 @@ export default async function LeadsPage({
                     </td>
                     <td className="py-3 pr-4">{LEAD_SOURCE_LABELS[lead.source]}</td>
                     <td className="py-3 pr-4">{LEAD_STAGE_LABELS[lead.stage]}</td>
-                    <td className="py-3 pr-4">{lead.lastContactAt ? formatDate(lead.lastContactAt) : "—"}</td>
+                    <td className="py-3 pr-4">
+                      {lead.lastContactAt ? formatDate(lead.lastContactAt) : "—"}
+                    </td>
                     <td className="py-3">
-                      <Badge variant={lead.temperature === "QUENTE" ? "hot" : lead.temperature === "FRIO" ? "cold" : "warning"}>
+                      <Badge
+                        variant={
+                          lead.temperature === "QUENTE"
+                            ? "hot"
+                            : lead.temperature === "FRIO"
+                              ? "cold"
+                              : "warning"
+                        }
+                      >
                         {LEAD_TEMPERATURE_LABELS[lead.temperature]}
                       </Badge>
                     </td>
@@ -90,7 +137,7 @@ export default async function LeadsPage({
               totalPages={result.totalPages}
               total={result.total}
               basePath="/leads"
-              params={{ q }}
+              params={paginationParams}
             />
           </CardContent>
         </Card>

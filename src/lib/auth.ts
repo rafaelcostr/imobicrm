@@ -15,19 +15,47 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "E-mail", type: "email" },
         password: { label: "Senha", type: "password" },
+        organizationSlug: { label: "Organização", type: "text" },
       },
       async authorize(credentials) {
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
-        const { email, password } = parsed.data;
-        const user = await prisma.user.findUnique({
-          where: { email: email.toLowerCase() },
-        });
+        const email = parsed.data.email.toLowerCase();
+        const organizationSlug = parsed.data.organizationSlug?.trim();
+
+        let user = null;
+
+        if (organizationSlug) {
+          const org = await prisma.organization.findFirst({
+            where: { slug: organizationSlug, isActive: true },
+          });
+
+          if (org) {
+            user = await prisma.user.findFirst({
+              where: { email, organizationId: org.id },
+              include: { organization: { select: { slug: true, name: true } } },
+            });
+          }
+        }
+
+        if (!user) {
+          user = await prisma.user.findFirst({
+            where: { email, role: "SUPER_ADMIN" },
+            include: { organization: { select: { slug: true, name: true } } },
+          });
+        }
+
+        if (!user) {
+          user = await prisma.user.findFirst({
+            where: { email },
+            include: { organization: { select: { slug: true, name: true } } },
+          });
+        }
 
         if (!user || !user.isActive) return null;
 
-        const valid = await compare(password, user.passwordHash);
+        const valid = await compare(parsed.data.password, user.passwordHash);
         if (!valid) return null;
 
         return {
@@ -35,6 +63,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           email: user.email,
           role: user.role,
+          organizationId: user.organizationId,
+          organizationSlug: user.organization?.slug ?? null,
+          organizationName: user.organization?.name ?? null,
         };
       },
     }),

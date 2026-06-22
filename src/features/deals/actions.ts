@@ -6,10 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
 import { assertLeadAccess } from "@/lib/access-control";
-import { getBrokerScope } from "@/lib/broker-scope";
+import { getVisitScope, getSaleScope } from "@/lib/broker-scope";
 import { buildPaginatedResult, parsePagination } from "@/lib/pagination";
 import { sanitizeString } from "@/lib/utils";
 import { proposalSchema, saleSchema, visitSchema } from "@/lib/validations/schemas";
+import { runAutomations } from "@/lib/automation/engine";
 import type { z } from "zod";
 
 const visitInclude = {
@@ -35,7 +36,7 @@ export async function getVisits(params?: { page?: string; pageSize?: string }) {
   requirePermission(user.role as Role, "leads:view");
 
   const { page, pageSize, skip } = parsePagination(params);
-  const where = getBrokerScope(user);
+  const where = getVisitScope(user);
 
   const [items, total] = await Promise.all([
     prisma.visit.findMany({
@@ -105,10 +106,21 @@ export async function toggleVisitComplete(id: string) {
     throw new Error("Acesso negado");
   }
 
+  const markingComplete = !visit.completed;
+
   await prisma.visit.update({
     where: { id },
-    data: { completed: !visit.completed },
+    data: { completed: markingComplete },
   });
+
+  if (markingComplete) {
+    await runAutomations({
+      trigger: "visit_completed",
+      leadId: visit.leadId,
+      visitId: id,
+      userId: user.id,
+    }).catch(() => {});
+  }
 
   revalidatePath("/negocios");
 }
@@ -118,7 +130,7 @@ export async function getProposals(params?: { page?: string; pageSize?: string }
   requirePermission(user.role as Role, "leads:view");
 
   const { page, pageSize, skip } = parsePagination(params);
-  const where = getBrokerScope(user);
+  const where = getVisitScope(user);
 
   const [items, total] = await Promise.all([
     prisma.proposal.findMany({
@@ -183,7 +195,7 @@ export async function getSales(params?: { page?: string; pageSize?: string }) {
   requirePermission(user.role as Role, "leads:view");
 
   const { page, pageSize, skip } = parsePagination(params);
-  const where = getBrokerScope(user);
+  const where = getSaleScope(user);
 
   const [items, total] = await Promise.all([
     prisma.sale.findMany({
@@ -260,6 +272,15 @@ export async function createSale(data: z.infer<typeof saleSchema>) {
 
     return created;
   });
+
+  if (parsed.leadId) {
+    await runAutomations({
+      trigger: "sale_closed",
+      leadId: parsed.leadId,
+      saleId: sale.id,
+      userId: user.id,
+    }).catch(() => {});
+  }
 
   revalidatePath("/negocios");
   revalidatePath("/imoveis");

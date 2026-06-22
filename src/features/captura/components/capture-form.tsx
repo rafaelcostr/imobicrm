@@ -15,9 +15,15 @@ interface CaptureFormProps {
   propertyCode?: string;
   propertyTitle?: string;
   defaultInterest?: string;
+  pageTitle?: string;
 }
 
-export function CaptureForm({ propertyCode, propertyTitle, defaultInterest }: CaptureFormProps) {
+export function CaptureForm({
+  propertyCode,
+  propertyTitle,
+  defaultInterest,
+  pageTitle = "Encontre seu imóvel ideal",
+}: CaptureFormProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -51,7 +57,7 @@ export function CaptureForm({ propertyCode, propertyTitle, defaultInterest }: Ca
       <CardHeader>
         <BrandHeader
           headingId="captura-heading"
-          title={propertyTitle ? `Interesse em ${propertyTitle}` : "Encontre seu imóvel ideal"}
+          title={propertyTitle ? `Interesse em ${propertyTitle}` : pageTitle}
           description={
             propertyTitle
               ? "Preencha seus dados e o corretor responsável entrará em contato"
@@ -64,7 +70,7 @@ export function CaptureForm({ propertyCode, propertyTitle, defaultInterest }: Ca
           <div className="flex flex-col items-center gap-3 py-6 text-center" role="status">
             <CheckCircle2 className="h-12 w-12 text-emerald-500" aria-hidden="true" />
             <p className="font-medium">Obrigado pelo interesse!</p>
-            <p className="text-sm text-muted-foreground">Seu lead foi registrado automaticamente no ImobiCRM.</p>
+            <p className="text-sm text-muted-foreground">Seu interesse foi registrado. Entraremos em contato em breve.</p>
             <div className="flex flex-wrap justify-center gap-2">
               <Button variant="outline" onClick={() => setSuccess(false)}>Enviar outro</Button>
               <Button variant="outline" asChild>
@@ -73,7 +79,7 @@ export function CaptureForm({ propertyCode, propertyTitle, defaultInterest }: Ca
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" aria-label="Formulário de captação de leads">
             <input
               type="text"
               name="website"
