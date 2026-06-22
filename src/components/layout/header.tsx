@@ -1,10 +1,11 @@
 "use client";
 
-import { Bell, LogOut, Moon, Plus, Search, Sun } from "lucide-react";
+import { LogOut, Moon, Plus, Search, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NotificationsBell } from "@/components/layout/notifications-bell";
 import { ROLE_LABELS } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import type { Role } from "@prisma/client";
@@ -35,9 +36,7 @@ export function Header({ userName, userRole, collapsed }: HeaderProps) {
         Novo
       </Button>
 
-      <Button variant="ghost" size="icon" aria-label="Notificações">
-        <Bell className="h-5 w-5" />
-      </Button>
+      <NotificationsBell />
 
       <Button
         variant="ghost"

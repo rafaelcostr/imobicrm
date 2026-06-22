@@ -1,19 +1,15 @@
 import { getCommissions, getCommissionSummary } from "@/features/commissions/actions";
+import { CommissionStatusSelect } from "@/features/commissions/components/commission-status-select";
 import { PageHeader } from "@/components/layout/page-header";
 import { Pagination } from "@/components/layout/pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { pageMetadata } from "@/lib/metadata";
-import { COMMISSION_STATUS_LABELS } from "@/lib/labels";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
+import type { Role } from "@prisma/client";
 
 export const metadata = pageMetadata("Comissões", "Controle financeiro de comissões por venda.");
-
-const statusVariant = {
-  PENDENTE: "warning" as const,
-  EM_PROCESSAMENTO: "secondary" as const,
-  PAGO: "success" as const,
-};
 
 export default async function CommissionsPage({
   searchParams,
@@ -21,6 +17,11 @@ export default async function CommissionsPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   const { page } = await searchParams;
+  const session = await auth();
+  const canManage = session?.user?.role
+    ? hasPermission(session.user.role as Role, "commissions:manage")
+    : false;
+
   const [result, summary] = await Promise.all([
     getCommissions({ page }),
     getCommissionSummary(),
@@ -66,8 +67,16 @@ export default async function CommissionsPage({
                     <td className="py-3 pr-4">{Number(c.percentage)}%</td>
                     <td className="py-3 pr-4 font-semibold">{formatCurrency(Number(c.amount))}</td>
                     <td className="py-3">
-                      <Badge variant={statusVariant[c.status]}>{COMMISSION_STATUS_LABELS[c.status]}</Badge>
-                      {c.paidAt && <p className="text-xs text-muted-foreground">{formatDate(c.paidAt)}</p>}
+                      <CommissionStatusSelect
+                        commissionId={c.id}
+                        status={c.status}
+                        canManage={canManage}
+                      />
+                      {c.paidAt && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Pago em {formatDate(c.paidAt)}
+                        </p>
+                      )}
                     </td>
                   </tr>
                 ))}
